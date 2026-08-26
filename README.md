@@ -94,3 +94,4 @@ Quick smoke check that the install is healthy:
 ```bash
 .venv/bin/python -c "import sussyanal; print(sussyanal.__version__)"
 ```
+# SusAnalysisPy
