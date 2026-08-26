@@ -42,11 +42,6 @@ _BRIDGE_JS = r"""
     }
     Plotly.restyle(gd2, { x: lineX, y: lineY }, lineI);
     Plotly.restyle(gd2, { x: ptX, y: ptY }, ptI);
-    if (CFG.steerTravel && CFG.shockTravel) {
-      var txt = "Steer: " + CFG.steerTravel[s].toFixed(2) +
-                " in | Shock: " + CFG.shockTravel[h].toFixed(2) + " in";
-      Plotly.relayout(gd2, { "annotations[0].text": txt });
-    }
   }
 
   function sliderEnd(evt) {
@@ -91,7 +86,7 @@ def analyze_page(
         include_plotlyjs=True,
         div_id="viewer3d",
         default_width="100%",
-        default_height="72vh",
+        default_height="100vh",  # 3-D fills the first viewport
         auto_play=False,  # start static; sliders only move on user input
     )
     env_html = pio.to_html(

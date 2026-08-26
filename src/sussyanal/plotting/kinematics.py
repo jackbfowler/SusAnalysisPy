@@ -160,17 +160,8 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
         )
 
     if live:
-        fig.add_annotation(
-            text=f"Steer: {results.rack_travel_axis[mid]:+.2f} in | "
-                 f"Shock: {results.shock_travel_axis[mid_shock]:+.2f} in",
-            xref="paper", yref="paper", x=0.0, y=1.05, showarrow=False,
-            bgcolor="rgba(255,255,255,0.85)", bordercolor="black", borderpad=4,
-        )
-        fig._envelope_config = {
-            "metrics": metrics_cfg,
-            "steerTravel": [float(v) for v in results.rack_travel_axis],
-            "shockTravel": [float(v) for v in x],
-        }
+        # (readout removed — the sliders already show the current values)
+        fig._envelope_config = {"metrics": metrics_cfg}
 
     fig.update_layout(height=900)
     return fig

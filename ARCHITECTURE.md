@@ -120,15 +120,16 @@ travel).
 ### In-page envelope linkage (`plotting/page.py`)
 
 For 2-D sets, `suspension3d.html` is **one page** containing the 3-D viewer
-(top, 72vh, sliders included) with the live envelope below — scroll down to
-view it. The page **starts static** (no auto-play); small in-page JS hooks the
-viewer's slider events and restyles the envelope's overlay traces, exactly like
-the MATLAB visualizer: the **steering slider switches which line is
-highlighted** (bold blue), and the **shock slider moves the red current-point
-marker** along it. Envelope steering lines are **colorcoded by steering
-position** (Plotly `sunsetdark`, full negative → full positive steer); the
-standalone `kinematics_envelope.html` additionally carries a steering colorbar.
-No cross-tab machinery or server is required — the page works from `file://`.
+(fills the first viewport, sliders included) with the live envelope below —
+scroll down to view it. The page **starts static** (no auto-play); small
+in-page JS hooks the viewer's slider events and restyles the envelope's
+overlay traces, exactly like the MATLAB visualizer: the **steering slider
+switches which line is highlighted** (bold blue), and the **shock slider moves
+the red current-point marker** along it. Envelope steering lines are
+**colorcoded by steering position** (Plotly `sunsetdark`, full negative → full
+positive steer); the standalone `kinematics_envelope.html` additionally carries
+a steering colorbar. No cross-tab machinery or server is required — the page
+works from `file://`.
 
 Headless policy: figures are written to `outputs/*.html` (gitignored).
 

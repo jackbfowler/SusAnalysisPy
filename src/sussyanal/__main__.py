@@ -63,7 +63,7 @@ def _cmd_analyze(args) -> int:
         viewer.update_layout(height=None)
         _write_page(
             viewer.to_html(full_html=True, include_plotlyjs=True,
-                           default_width="100%", default_height="72vh", auto_play=False),
+                           default_width="100%", default_height="100vh", auto_play=False),
             Path(args.out_dir),
             "suspension3d.html",
         )

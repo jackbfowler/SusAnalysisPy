@@ -52,9 +52,8 @@ def test_envelope_figure_2d_static_and_live():
     live = kin_plot.envelope_figure(res, live=True)
     assert len(live.data) == 9 * (res.n_steer_steps + 2)  # + red point per metric
     cfg = live._envelope_config
+    assert set(cfg) == {"metrics"}
     assert len(cfg["metrics"]) == 9
-    assert len(cfg["steerTravel"]) == res.n_steer_steps
-    assert len(cfg["shockTravel"]) == res.n_shock_steps
     for m in cfg["metrics"]:
         assert 0 <= m["line"] < m["point"] < len(live.data)
         assert set(m) == {"key", "line", "point", "x", "data"}
@@ -92,7 +91,7 @@ def test_analyze_page_assembles():
     assert 'id="viewer3d"' in page
     assert 'id="envelope"' in page
     assert "plotly_sliderend" in page
-    assert "72vh" in page          # viewer fills the top
+    assert "100vh" in page        # viewer fills the first viewport
     assert page.count("Plotly.newPlot") == 2  # both figures on one page
     # the envelope figure must come after the viewer in document order
     assert page.index('id="envelope"') > page.index('id="viewer3d"')
