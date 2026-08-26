@@ -228,7 +228,10 @@ def suspension_figure(
         shock_idxs.append(mid_shock)
         shock_idxs.sort()
 
-    wheel_verts, wheel_tri = common.wheel_mesh(model.config.wheel_size, model.config.wheel_width)
+    # coarser wheel mesh keeps the per-frame data small
+    wheel_verts, wheel_tri = common.wheel_mesh(
+        model.config.wheel_size, model.config.wheel_width, n_theta=24
+    )
     static_pts = _static_points(model)
 
     def traces(s: int, h: int):
@@ -247,18 +250,13 @@ def suspension_figure(
     shock_mid_pos = int(np.argmin(np.abs(np.array(shock_idxs) - mid_shock)))
     steer_mid_pos = int(np.argmin(np.abs(np.array(steer_idxs) - mid_steer)))
 
-    # ---- shock slider: sweep at static steer ----
+    # ---- shock slider: sweep at static steer (instant frame jump, no animation) ----
     shock_steps = [
         dict(
             method="animate",
             args=[
                 [f"h{h}"],
-                dict(
-                    mode="immediate",
-                    frame=dict(duration=0, redraw=True),
-                    transition=dict(duration=0),
-                    sliders=[dict(active=steer_mid_pos)],
-                ),
+                dict(mode="immediate", sliders=[dict(active=steer_mid_pos)]),
             ],
             label=f"{results.shock_travel_axis[h]:.2f}",
         )
@@ -284,12 +282,7 @@ def suspension_figure(
                     method="animate",
                     args=[
                         [frame_ref],
-                        dict(
-                            mode="immediate",
-                            frame=dict(duration=0, redraw=True),
-                            transition=dict(duration=0),
-                            sliders=[dict(active=shock_mid_pos)],
-                        ),
+                        dict(mode="immediate", sliders=[dict(active=shock_mid_pos)]),
                     ],
                     label=f"{results.rack_travel_axis[s]:.2f}",
                 )
