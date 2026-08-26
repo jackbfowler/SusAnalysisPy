@@ -46,8 +46,11 @@ python -m sussyanal analyze data/2026BajaFront_1-20.csv --out-dir outputs
 ### Commands
 
 ```bash
-# Kinematic sweep (sussy_steer) + interactive 3-D + curve/surface plots
+# Kinematic sweep (sussy_steer) + interactive 3-D + curve/envelope plots
 sussyanal analyze <csv> [--n-shock 100] [--out-dir outputs]
+
+# 2-D sets write envelope plots by default; add --surfaces for surface plots
+sussyanal analyze <csv> --surfaces
 
 # Quasistatic force analysis + force visualization
 sussyanal forces <csv> [--out-dir outputs]

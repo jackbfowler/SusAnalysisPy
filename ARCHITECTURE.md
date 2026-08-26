@@ -96,8 +96,9 @@ active for that set only).
   — viewable in a browser with no display server.
 - Native **3-D** (`Scatter3d`, `Line3d`, `Mesh3d`, `Cone`) reproduces MATLAB
   `plot3`/`surf`/`fill3`/`quiver3`.
-- Native **sliders + frames** replace MATLAB `uicontrol` sliders and the
-  "Play Bump/Droop" buttons.
+- Native **sliders + frames** replace MATLAB `uicontrol` sliders (no play
+  buttons; surfaces are opt-in via `--surfaces`, matching MATLAB's
+  `show_surface_plots=false` default).
 
 | MATLAB | Plotly |
 | --- | --- |

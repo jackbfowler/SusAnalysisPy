@@ -1,5 +1,5 @@
 """Interactive 3-D suspension visualizer (Plotly) — port of the MATLAB
-``create_vis`` figure with shock slider + steering slider + play bump/droop.
+``create_vis`` figure with shock slider + steering slider.
 
 Plotly animates a single frame axis, so for 2-D (steer x shock) data we
 generate only the frames each slider needs:
@@ -303,22 +303,5 @@ def suspension_figure(
             )
         )
 
-    play_frames = [f"h{h}" for h in shock_idxs]
-    fig.update_layout(
-        sliders=sliders,
-        updatemenus=[
-            dict(
-                type="buttons",
-                buttons=[
-                    dict(label="Play", method="animate",
-                         args=[play_frames, dict(frame=dict(duration=30, redraw=True),
-                                                 transition=dict(duration=0), fromcurrent=True, mode="immediate")]),
-                    dict(label="Reverse", method="animate",
-                         args=[list(reversed(play_frames)), dict(frame=dict(duration=30, redraw=True),
-                                                                transition=dict(duration=0), fromcurrent=True, mode="immediate")]),
-                ],
-                x=0.1, y=0.06, xanchor="right", yanchor="top",
-            )
-        ],
-    )
+    fig.update_layout(sliders=sliders)
     return fig

@@ -25,8 +25,11 @@ def _write(fig, out_dir: Path, name: str) -> Path:
 def _cmd_analyze(args) -> int:
     results = analyze_steer(args.csv, n_shock_steps=args.n_shock, progress=True)
     if results.is_2d:
-        _write(kin_plot.surfaces_figure(results), Path(args.out_dir), "kinematics_surfaces.html")
+        # envelope is the default for 2-D; surfaces are opt-in (MATLAB
+        # show_surface_plots defaults to false)
         _write(kin_plot.envelope_figure(results), Path(args.out_dir), "kinematics_envelope.html")
+        if args.surfaces:
+            _write(kin_plot.surfaces_figure(results), Path(args.out_dir), "kinematics_surfaces.html")
     else:
         _write(kin_plot.curve_figure(results), Path(args.out_dir), "kinematics_curves.html")
 
@@ -71,6 +74,8 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("analyze", help="Run kinematic sweep + plots (sussy_steer)")
     a.add_argument("csv")
     a.add_argument("--n-shock", type=int, default=100)
+    a.add_argument("--surfaces", action="store_true",
+                   help="also write 2-D surface plots (off by default)")
     a.add_argument("--out-dir", default="outputs")
     a.set_defaults(fn=_cmd_analyze)
 
