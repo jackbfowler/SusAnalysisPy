@@ -27,3 +27,4 @@ Thumbs.db
 # ---- Generated media / outputs ----
 *.avi
 *.mp4
+/outputs/

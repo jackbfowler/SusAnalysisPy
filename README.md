@@ -1,5 +1,27 @@
 # SussyAnal
 
-Python port of the Baja SAE suspension analysis MATLAB tooling.
+Python port of the Baja SAE suspension analysis MATLAB tooling — suspension
+kinematics, quasistatic force analysis, and interactive Plotly visualization.
 
-See `agents.md` for development guidance.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the design and `agents.md` for
+development guidance.
+
+## Install
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -e .
+```
+
+## Usage
+
+```bash
+# Kinematic sweep + interactive 3-D + curve/surface plots
+.venv/bin/python -m sussyanal analyze data/2026BajaFront_1-20.csv --out-dir outputs
+
+# Quasistatic force analysis + force visualization
+.venv/bin/python -m sussyanal forces data/2026BajaFront_1-20.csv --out-dir outputs
+```
+
+Outputs are self-contained Plotly HTML files, viewable in any browser — no
+display server required (works over SSH/VS-Codium).

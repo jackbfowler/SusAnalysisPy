@@ -10,15 +10,16 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "numpy",
-    "scipy",
-    "pandas",
-    "matplotlib",
+    "plotly",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
 ]
+
+[project.scripts]
+sussyanal = "sussyanal.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
