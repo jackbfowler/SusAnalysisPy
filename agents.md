@@ -15,7 +15,8 @@ vehicles. This repository is a Python port of the MATLAB implementation in
 - `src/sussyanal/geometry.py` — math helpers, dataclasses, `SuspensionModel`.
 - `src/sussyanal/kinematics/solver.py` — `solve_sweep()` + `KinematicResults`.
 - `src/sussyanal/kinematics/steer.py` / `shock_only.py` — analyzers.
-- `src/sussyanal/kinematics/optimize.py` / `tie_on_arm.py` — optimizers (stubs, TODO).
+- `src/sussyanal/kinematics/optimize.py` — hardpoint grid-search optimizer.
+- `src/sussyanal/kinematics/tie_on_arm.py` — tie-on-LCA mount optimizer.
 - `src/sussyanal/forces/` — `solve_forces.py` + `run_quasistatic.py`.
 - `src/sussyanal/plotting/` — Plotly figures (curves, surfaces, 3-D, forces).
 - `data/` — canonical input CSVs. `tests/` — pytest suite. `outputs/` — generated HTML (gitignored).
@@ -26,8 +27,8 @@ vehicles. This repository is a Python port of the MATLAB implementation in
 | --- | --- |
 | `sussy_steer.m` | `kinematics/steer.py` + `kinematics/solver.py` |
 | `sussy_shock_only.m` | `kinematics/shock_only.py` |
-| `sussy_optimize.m` | `kinematics/optimize.py` (TODO) |
-| `sussy_tie_on_arm.m` | `kinematics/tie_on_arm.py` (TODO) |
+| `sussy_optimize.m` | `kinematics/optimize.py` (grid method) |
+| `sussy_tie_on_arm.m` | `kinematics/tie_on_arm.py` (bounded search) |
 | `solve_forces.m` | `forces/solve_forces.py` |
 | `run_quasistatic.m` | `forces/run_quasistatic.py` |
 | `visualize_forces.m` | `plotting/forces3d.py` |

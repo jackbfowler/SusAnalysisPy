@@ -397,8 +397,12 @@ class SuspensionModel:
         return self.axle is not None
 
     # ------------------------------------------------------------------ #
-    def solve_step(self, shock_length: float, rack_position: Vec3) -> StepGeometry:
-        """Solve the suspension pose for one shock length + rack position."""
+    def solve_arms(self, shock_length: float) -> tuple[Vec3, Vec3, Vec3, float]:
+        """Solve primary + secondary arm positions for one shock length.
+
+        Returns ``(lca_outer, uca_outer, shock_lower, delta_phi)`` where
+        ``delta_phi`` is the shock-driven arm rotation.
+        """
         cfg = self.config
         shock = self.shock
         up = self.upright
@@ -426,6 +430,13 @@ class SuspensionModel:
             cur_lca_outer = l1 if l1[2] < l2[2] else l2
 
         cur_shock_lower = rotate_point(shock.lower_init, shock.arm_origin, shock.arm_axis, delta_phi)
+        return cur_lca_outer, cur_uca_outer, cur_shock_lower, delta_phi
+
+    def solve_step(self, shock_length: float, rack_position: Vec3) -> StepGeometry:
+        """Solve the suspension pose for one shock length + rack position."""
+        cfg = self.config
+        up = self.upright
+        cur_lca_outer, cur_uca_outer, cur_shock_lower, _ = self.solve_arms(shock_length)
 
         kp_axis = unit(cur_uca_outer - cur_lca_outer)
         tie_center = cur_lca_outer + up.tie_axial * kp_axis

@@ -119,5 +119,16 @@ module, and the solver is closed-form (no optimizer needed for the core).
 - [x] Repo scaffold, package skeleton, CSV `io`, geometry model
 - [x] Kinematic solver (`sussy_steer` + `sussy_shock_only`) + Plotly plots
 - [x] Force solver + quasistatic driver + force visualizer
-- [ ] `optimize.py` (grid search) and `tie_on_arm.py` (mount optimizer)
-- [ ] pytest suite with numerical parity checks
+- [x] `optimize.py` (grid search) and `tie_on_arm.py` (mount optimizer)
+- [ ] pytest numerical parity checks against exported MATLAB reference outputs
+
+### Notes on the optimizers
+
+- `optimize.py` implements the MATLAB `grid` method only; the alternate
+  `geometry` (sphere-fit) method is not ported.
+- `tie_on_arm.py` is a cleaned port of a heuristic MATLAB script: the search
+  is bounded to the LCA pivot box ± 5 in (bounds the reference computes but
+  never applies — its unbounded `fminsearch` drifts to meaningless locations),
+  and the arm-rotation sign uses the robust `sussy_steer` logic.
+- The 2-D MATLAB envelope plots are represented by the surface grids
+  (`surfaces_figure`), which carry the same information.

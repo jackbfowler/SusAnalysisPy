@@ -1,11 +1,18 @@
-"""CLI entry point: ``python -m sussyanal analyze|forces <csv>``."""
+"""CLI entry point: ``python -m sussyanal analyze|forces|optimize|tie <csv>``."""
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
 from .forces import run_quasistatic, report
-from .kinematics import analyze_steer
+from .kinematics import (
+    analyze_steer,
+    optimization_figure,
+    optimize,
+    optimize_tie,
+    report as optimize_report,
+    tie_figure,
+)
 from .plotting import forces3d, kinematics as kin_plot, suspension3d
 
 
@@ -20,25 +27,19 @@ def _write(fig, out_dir: Path, name: str) -> Path:
 def _cmd_analyze(args) -> int:
     results = analyze_steer(args.csv, n_shock_steps=args.n_shock, progress=True)
     if results.is_2d:
-        fig = kin_plot.surfaces_figure(results)
-        _write(fig, Path(args.out_dir), "kinematics_surfaces.html")
+        _write(kin_plot.surfaces_figure(results), Path(args.out_dir), "kinematics_surfaces.html")
     else:
-        fig = kin_plot.curve_figure(results)
-        _write(fig, Path(args.out_dir), "kinematics_curves.html")
+        _write(kin_plot.curve_figure(results), Path(args.out_dir), "kinematics_curves.html")
 
-    model = _model(results)
+    from .geometry import SuspensionModel
+
+    model = SuspensionModel(results.geometry, results.config)
     _write(
         suspension3d.suspension_figure(model, results),
         Path(args.out_dir),
         "suspension3d.html",
     )
     return 0
-
-
-def _model(results):
-    from .geometry import SuspensionModel
-
-    return SuspensionModel(results.geometry, results.config)
 
 
 def _cmd_forces(args) -> int:
@@ -48,20 +49,65 @@ def _cmd_forces(args) -> int:
     return 0
 
 
+def _cmd_optimize(args) -> int:
+    res = optimize(
+        args.csv,
+        opt_point=args.point,
+        sweep_axes=[int(a) for a in args.axes.split(",")],
+        sweep_range=[float(r) for r in args.range.split(",")],
+        sweep_steps=[int(s) for s in args.steps.split(",")],
+        objective=args.objective,
+        n_shock_steps=args.n_shock,
+        progress=True,
+    )
+    print(optimize_report(res))
+    _write(optimization_figure(res), Path(args.out_dir), "optimization.html")
+    return 0
+
+
+def _cmd_tie(args) -> int:
+    res = optimize_tie(args.csv, n_steps=args.n_steps)
+    print(
+        f"Optimal Inner Tie Rod (static XYZ): "
+        f"[{res.opt_point[0]:.3f}, {res.opt_point[1]:.3f}, {res.opt_point[2]:.3f}]\n"
+        f"Max Toe Deviation: {res.max_err:.4f} deg"
+    )
+    _write(tie_figure(res), Path(args.out_dir), "tie_on_arm.html")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sussyanal", description="Baja suspension analysis")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     a = sub.add_parser("analyze", help="Run kinematic sweep + plots")
-    a.add_argument("csv", help="Suspension CSV file")
+    a.add_argument("csv")
     a.add_argument("--n-shock", type=int, default=100)
     a.add_argument("--out-dir", default="outputs")
     a.set_defaults(fn=_cmd_analyze)
 
     f = sub.add_parser("forces", help="Run quasistatic force analysis + plot")
-    f.add_argument("csv", help="Suspension CSV file")
+    f.add_argument("csv")
     f.add_argument("--out-dir", default="outputs")
     f.set_defaults(fn=_cmd_forces)
+
+    o = sub.add_parser("optimize", help="Hardpoint grid-search optimizer")
+    o.add_argument("csv")
+    o.add_argument("--point", default="OuterTrackRodBallJoint")
+    o.add_argument("--axes", default="3", help="comma-separated 1/2/3 (X/Y/Z)")
+    o.add_argument("--range", default="1.0", help="comma-separated +/- sweep (in)")
+    o.add_argument("--steps", default="50", help="comma-separated step counts")
+    o.add_argument("--objective", default="bump_steer",
+                   choices=("plunge_range", "plunge_max", "bump_steer", "camber_gain"))
+    o.add_argument("--n-shock", type=int, default=30)
+    o.add_argument("--out-dir", default="outputs")
+    o.set_defaults(fn=_cmd_optimize)
+
+    t = sub.add_parser("tie", help="Tie-rod-on-LCA mount optimizer")
+    t.add_argument("csv")
+    t.add_argument("--n-steps", type=int, default=20)
+    t.add_argument("--out-dir", default="outputs")
+    t.set_defaults(fn=_cmd_tie)
 
     args = parser.parse_args(argv)
     return args.fn(args)
