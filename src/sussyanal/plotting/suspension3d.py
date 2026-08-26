@@ -258,7 +258,7 @@ def suspension_figure(
             frames.append(go.Frame(data=traces(s, mid_shock), name=f"s{s}"))
 
     fig = go.Figure(data=traces(steer_idx, mid_shock))
-    common.layout3d(fig, title="Suspension Geometry (shock sweep; steering at static ride height)")
+    common.layout3d(fig, title="")
     fig.frames = frames
 
     shock_mid_pos = int(np.argmin(np.abs(np.array(shock_idxs) - mid_shock)))
@@ -277,12 +277,15 @@ def suspension_figure(
         for h in shock_idxs
     ]
 
+    # centered sliders, spaced apart so the readout labels never overlap
+    slider_style = dict(len=0.5, x=0.5, xanchor="center", pad=dict(t=12, b=8))
     sliders = [
         dict(
             active=shock_mid_pos,
             steps=shock_steps,
             currentvalue=dict(prefix="Shock travel: ", suffix=" in"),
-            len=0.9, x=0.05, y=0.0,
+            y=0.0,
+            **slider_style,
         )
     ]
 
@@ -306,7 +309,8 @@ def suspension_figure(
                 active=steer_mid_pos,
                 steps=steer_steps,
                 currentvalue=dict(prefix="Steering (rack): ", suffix=" in"),
-                len=0.9, x=0.05, y=-0.14,
+                y=-0.24,
+                **slider_style,
             )
         )
 

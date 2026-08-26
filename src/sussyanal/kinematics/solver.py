@@ -80,7 +80,8 @@ def solve_sweep(
     shock = model.shock
 
     if n_steer_steps is None:
-        n_steer_steps = 21 if cfg.steer_sweep > 0.001 else 1
+        # 2-D resolution: 41 steering steps (double the original 21)
+        n_steer_steps = 41 if cfg.steer_sweep > 0.001 else 1
 
     shock_min = shock.length_init - abs(cfg.bump)
     shock_max = shock.length_init + abs(cfg.droop)

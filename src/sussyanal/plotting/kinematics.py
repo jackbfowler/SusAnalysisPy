@@ -172,5 +172,5 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
             "shockTravel": [float(v) for v in x],
         }
 
-    fig.update_layout(height=900, title_text="Envelope (one line per steering step)")
+    fig.update_layout(height=900)
     return fig

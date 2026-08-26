@@ -140,7 +140,7 @@ def layout3d(fig: go.Figure, title: str = "", aspect: str = "cube"):
             aspectmode="data",
             camera=dict(eye=dict(x=-1.2, y=-1.2, z=0.8)),
         ),
-        margin=dict(l=0, r=0, t=40, b=0),
+        margin=dict(l=0, r=0, t=40 if title else 10, b=0),
         height=720,
     )
     return fig

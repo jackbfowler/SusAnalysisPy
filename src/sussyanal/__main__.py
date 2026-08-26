@@ -99,7 +99,8 @@ def main(argv: list[str] | None = None) -> int:
 
     a = sub.add_parser("analyze", help="Run kinematic sweep + plots (sussy_steer)")
     a.add_argument("csv")
-    a.add_argument("--n-shock", type=int, default=100)
+    a.add_argument("--n-shock", type=int, default=200,
+                   help="shock steps (2-D grid resolution; default 200)")
     a.add_argument("--surfaces", action="store_true",
                    help="also write 2-D surface plots (off by default)")
     a.add_argument("--out-dir", default="outputs")
