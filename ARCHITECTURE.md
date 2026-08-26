@@ -103,9 +103,17 @@ active for that set only).
 | --- | --- |
 | `create_plots` 1-D curves | `plotting.kinematics.curve_figure()` |
 | `create_plots` 2-D surfaces | `plotting.kinematics.surfaces_figure()` |
-| `create_vis` interactive 3-D + sliders | `plotting.suspension3d.suspension_figure()` |
+| `create_plots` envelope (`do_envelope`) | `plotting.kinematics.envelope_figure()` |
+| `create_vis` interactive 3-D + sliders | `plotting.suspension3d.suspension_figure()` (shock **and** steering sliders) |
 | `visualize_forces` vectors | `plotting.forces3d.forces_figure()` |
 | `sussy_optimize` cost maps | `kinematics.optimize.optimization_figure()` |
+
+Plotly animates a single frame axis, so the interactive 3-D figure uses two
+sliders with a compact frame set: the **shock slider** sweeps all shock steps
+at static steer and the **steering slider** sweeps all steer steps at static
+ride height (dragging one snaps the other to static). The full 2-D coupling is
+shown by the surface and envelope plots (one line per steering step vs shock
+travel).
 
 Headless policy: figures are written to `outputs/*.html` (gitignored).
 

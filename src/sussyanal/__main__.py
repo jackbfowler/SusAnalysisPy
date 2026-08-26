@@ -26,6 +26,7 @@ def _cmd_analyze(args) -> int:
     results = analyze_steer(args.csv, n_shock_steps=args.n_shock, progress=True)
     if results.is_2d:
         _write(kin_plot.surfaces_figure(results), Path(args.out_dir), "kinematics_surfaces.html")
+        _write(kin_plot.envelope_figure(results), Path(args.out_dir), "kinematics_envelope.html")
     else:
         _write(kin_plot.curve_figure(results), Path(args.out_dir), "kinematics_curves.html")
 

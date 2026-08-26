@@ -1,6 +1,8 @@
 """Kinematic curve + surface figures (ports of MATLAB ``create_plots``)."""
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -17,6 +19,8 @@ _METRICS = [
     ("wheel_travel", "Wheel Travel", "in"),
     ("motion_ratio", "Motion Ratio", "MR"),
 ]
+
+_ENVELOPE_METRICS = _METRICS + [("track_change", "Track Change", "in")]
 
 
 def _series(results: KinematicResults, key: str) -> np.ndarray:
@@ -71,4 +75,48 @@ def surfaces_figure(results: KinematicResults) -> go.Figure:
         fig.update_xaxes(title_text="Shock", row=row + 1, col=col + 1)
         fig.update_yaxes(title_text="Rack", row=row + 1, col=col + 1)
     fig.update_layout(height=900, title_text="Suspension Analysis (Surface)")
+    return fig
+
+
+def envelope_figure(results: KinematicResults) -> go.Figure:
+    """Envelope plots (MATLAB ``do_envelope``): shock travel on the x-axis with
+    one line per steering step (gray), the static-steer line highlighted (blue),
+    and min/max markers — both shock travel and steering visible."""
+    n = len(_ENVELOPE_METRICS)  # 9
+    fig = make_subplots(rows=3, cols=3, subplot_titles=[m[1] for m in _ENVELOPE_METRICS])
+    x = results.shock_travel_axis
+    ns = results.n_steer_steps
+    mid = math.ceil(ns / 2) - 1
+
+    for k, (key, name, unit) in enumerate(_ENVELOPE_METRICS):
+        z = _series(results, key)
+        row, col = divmod(k, 3)
+        for s in range(ns):
+            bold = s == mid
+            fig.add_trace(
+                go.Scatter(
+                    x=x, y=z[s, :], mode="lines",
+                    line=dict(
+                        color="rgb(31,119,180)" if bold else "rgb(217,217,217)",
+                        width=2.5 if bold else 0.8,
+                    ),
+                    name=f"{name} (steer {s})" if not bold else f"{name} (static steer)",
+                    showlegend=False,
+                    hoverinfo="x+y" if bold else "skip",
+                ),
+                row=row + 1, col=col + 1,
+            )
+        y = z[mid, :]
+        for v, sym in ((float(np.min(y)), "triangle-down"), (float(np.max(y)), "triangle-up")):
+            i = int(np.argmin(y)) if sym == "triangle-down" else int(np.argmax(y))
+            fig.add_trace(
+                go.Scatter(x=[x[i]], y=[v], mode="markers",
+                           marker=dict(symbol=sym, size=10, color="black"),
+                           showlegend=False, hoverinfo="skip"),
+                row=row + 1, col=col + 1,
+            )
+        fig.update_xaxes(title_text="Shock Travel (in)", row=row + 1, col=col + 1)
+        fig.update_yaxes(title_text=unit, row=row + 1, col=col + 1)
+
+    fig.update_layout(height=900, title_text="Envelope (one line per steering step)")
     return fig

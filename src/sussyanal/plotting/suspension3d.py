@@ -1,5 +1,16 @@
 """Interactive 3-D suspension visualizer (Plotly) — port of the MATLAB
-``create_vis`` figure with shock slider + play bump/droop."""
+``create_vis`` figure with shock slider + steering slider + play bump/droop.
+
+Plotly animates a single frame axis, so for 2-D (steer x shock) data we
+generate only the frames each slider needs:
+
+- the **shock slider** sweeps all shock steps at the static steer, and
+- the **steering slider** sweeps all steer steps at static ride height.
+
+Moving one slider snaps the other back to its static position (standard
+Plotly two-slider behavior); the full 2-D coupling is best viewed in the
+surface / envelope plots.
+"""
 from __future__ import annotations
 
 import math
@@ -35,7 +46,7 @@ def _state_traces(
     wheel_verts: np.ndarray,
     wheel_tri: np.ndarray,
     static_pts: np.ndarray,
-) -> list[go.Scatter3d | go.Mesh3d]:
+) -> list:
     lca_f, lca_r = model.lca.front, model.lca.rear
     uca_f, uca_r = model.uca.front, model.uca.rear
     shock_upper = model.shock.upper
@@ -155,7 +166,7 @@ def _state_traces(
         )
     )
 
-    # ball joints + spindle + contact patch
+    # ball joints + contact patch
     traces.append(
         go.Scatter3d(
             x=[lo[0], uo[0]], y=[lo[1], uo[1]], z=[lo[2], uo[2]],
@@ -192,59 +203,119 @@ def suspension_figure(
     model: SuspensionModel,
     results: KinematicResults,
     steer_idx: int | None = None,
-    n_frames: int | None = None,
+    n_shock_frames: int | None = None,
 ) -> go.Figure:
-    """Build the interactive 3-D figure with a shock slider + play buttons."""
+    """Interactive 3-D figure with shock slider (+ steering slider when 2-D).
+
+    The shock slider sweeps all shock steps at the static steer; for 2-D data a
+    steering slider sweeps all steer steps at static ride height.
+    """
+    if results.n_steer_steps > 1:
+        steer_idxs = list(range(results.n_steer_steps))
+        mid_steer = math.ceil(results.n_steer_steps / 2) - 1
+    else:
+        steer_idxs = [0]
+        mid_steer = 0
     if steer_idx is None:
-        steer_idx = math.ceil(results.n_steer_steps / 2) - 1
+        steer_idx = mid_steer
     steer_idx = int(np.clip(steer_idx, 0, results.n_steer_steps - 1))
 
-    if n_frames is None:
-        n_frames = results.n_shock_steps
-    frame_idxs = np.linspace(0, results.n_shock_steps - 1, n_frames).round().astype(int)
+    if n_shock_frames is None:
+        n_shock_frames = min(results.n_shock_steps, 40)
+    shock_idxs = np.linspace(0, results.n_shock_steps - 1, n_shock_frames).round().astype(int).tolist()
+    mid_shock = int(np.argmin(np.abs(results.shock_travel_axis)))
+    if mid_shock not in shock_idxs:  # the steering slider needs a mid-shock frame
+        shock_idxs.append(mid_shock)
+        shock_idxs.sort()
 
     wheel_verts, wheel_tri = common.wheel_mesh(model.config.wheel_size, model.config.wheel_width)
     static_pts = _static_points(model)
 
-    def traces(i: int):
-        return _state_traces(model, results, steer_idx, i, wheel_verts, wheel_tri, static_pts)
+    def traces(s: int, h: int):
+        return _state_traces(model, results, s, h, wheel_verts, wheel_tri, static_pts)
 
-    fig = go.Figure(data=traces(frame_idxs[0]))
-    common.layout3d(fig, title="Suspension Geometry (shock sweep)")
+    # Frames: every (mid_steer, h) named h{h}, plus every (s, mid_shock) named s{s}.
+    frames = [go.Frame(data=traces(mid_steer, h), name=f"h{h}") for h in shock_idxs]
+    for s in steer_idxs:
+        if s != mid_steer:
+            frames.append(go.Frame(data=traces(s, mid_shock), name=f"s{s}"))
 
-    frames = [go.Frame(data=traces(i), name=f"f{i}") for i in frame_idxs]
+    fig = go.Figure(data=traces(steer_idx, mid_shock))
+    common.layout3d(fig, title="Suspension Geometry (shock sweep; steering at static ride height)")
     fig.frames = frames
 
-    steps = [
+    shock_mid_pos = int(np.argmin(np.abs(np.array(shock_idxs) - mid_shock)))
+    steer_mid_pos = int(np.argmin(np.abs(np.array(steer_idxs) - mid_steer)))
+
+    # ---- shock slider: sweep at static steer ----
+    shock_steps = [
         dict(
             method="animate",
             args=[
-                [f"f{i}"],
-                dict(mode="immediate", frame=dict(duration=0, redraw=True), transition=dict(duration=0)),
+                [f"h{h}"],
+                dict(
+                    mode="immediate",
+                    frame=dict(duration=0, redraw=True),
+                    transition=dict(duration=0),
+                    sliders=[dict(active=steer_mid_pos)],
+                ),
             ],
-            label=f"{results.shock_travel_axis[i]:.2f}",
+            label=f"{results.shock_travel_axis[h]:.2f}",
         )
-        for i in frame_idxs
+        for h in shock_idxs
     ]
-    fig.update_layout(
-        sliders=[
-            dict(
-                active=0,
-                steps=steps,
-                currentvalue=dict(prefix="Shock travel: ", suffix=" in"),
-                len=0.9,
-                x=0.05,
-                y=0.0,
+
+    sliders = [
+        dict(
+            active=shock_mid_pos,
+            steps=shock_steps,
+            currentvalue=dict(prefix="Shock travel: ", suffix=" in"),
+            len=0.9, x=0.05, y=0.0,
+        )
+    ]
+
+    # ---- steering slider (2-D only): sweep at static ride height ----
+    if results.n_steer_steps > 1:
+        steer_steps = []
+        for s in steer_idxs:
+            frame_ref = f"h{mid_shock}" if s == mid_steer else f"s{s}"
+            steer_steps.append(
+                dict(
+                    method="animate",
+                    args=[
+                        [frame_ref],
+                        dict(
+                            mode="immediate",
+                            frame=dict(duration=0, redraw=True),
+                            transition=dict(duration=0),
+                            sliders=[dict(active=shock_mid_pos)],
+                        ),
+                    ],
+                    label=f"{results.rack_travel_axis[s]:.2f}",
+                )
             )
-        ],
+        sliders.append(
+            dict(
+                active=steer_mid_pos,
+                steps=steer_steps,
+                currentvalue=dict(prefix="Steering (rack): ", suffix=" in"),
+                len=0.9, x=0.05, y=-0.14,
+            )
+        )
+
+    play_frames = [f"h{h}" for h in shock_idxs]
+    fig.update_layout(
+        sliders=sliders,
         updatemenus=[
             dict(
                 type="buttons",
                 buttons=[
                     dict(label="Play", method="animate",
-                         args=[None, dict(frame=dict(duration=30, redraw=True), transition=dict(duration=0), fromcurrent=True, mode="immediate")]),
+                         args=[play_frames, dict(frame=dict(duration=30, redraw=True),
+                                                 transition=dict(duration=0), fromcurrent=True, mode="immediate")]),
                     dict(label="Reverse", method="animate",
-                         args=[None, dict(frame=dict(duration=30, redraw=True), transition=dict(duration=0), fromcurrent=True, mode="immediate", direction="reverse")]),
+                         args=[list(reversed(play_frames)), dict(frame=dict(duration=30, redraw=True),
+                                                                transition=dict(duration=0), fromcurrent=True, mode="immediate")]),
                 ],
                 x=0.1, y=0.06, xanchor="right", yanchor="top",
             )
