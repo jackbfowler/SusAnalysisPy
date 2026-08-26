@@ -58,12 +58,12 @@ def _cmd_analyze(args) -> int:
     else:
         _write(kin_plot.curve_figure(results), Path(args.out_dir), "kinematics_curves.html")
 
-        # 1-D viewer (single figure), filling the viewport
+        # 1-D viewer (single figure), filling the viewport; static on load
         viewer = suspension3d.suspension_figure(model, results)
         viewer.update_layout(height=None)
         _write_page(
             viewer.to_html(full_html=True, include_plotlyjs=True,
-                           default_width="100%", default_height="72vh"),
+                           default_width="100%", default_height="72vh", auto_play=False),
             Path(args.out_dir),
             "suspension3d.html",
         )

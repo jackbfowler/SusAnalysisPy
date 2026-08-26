@@ -46,19 +46,35 @@ def test_envelope_figure_2d_static_and_live():
 
     static = kin_plot.envelope_figure(res, live=False)
     assert not hasattr(static, "_envelope_config")
-    # no red current-point overlay in the static output
-    assert len(static.data) == 9 * res.n_steer_steps + 9 * 3
+    # per metric: steering family + current line; plus one colorbar carrier
+    assert len(static.data) == 9 * (res.n_steer_steps + 1) + 1
 
     live = kin_plot.envelope_figure(res, live=True)
-    assert len(live.data) == 9 * res.n_steer_steps + 9 * 4  # + red point
+    assert len(live.data) == 9 * (res.n_steer_steps + 2)  # + red point per metric
     cfg = live._envelope_config
     assert len(cfg["metrics"]) == 9
     assert len(cfg["steerTravel"]) == res.n_steer_steps
     assert len(cfg["shockTravel"]) == res.n_shock_steps
     for m in cfg["metrics"]:
-        assert 0 <= m["line"] < m["min"] < m["max"] < m["point"] < len(live.data)
+        assert 0 <= m["line"] < m["point"] < len(live.data)
+        assert set(m) == {"key", "line", "point", "x", "data"}
         assert len(m["data"]) == res.n_steer_steps
         assert len(m["data"][0]) == res.n_shock_steps
+
+
+def test_envelope_steer_lines_colorcoded():
+    _, res = _results()
+    fig = kin_plot.envelope_figure(res, live=False)
+    first = fig.data[0].line.color            # steer 0 (full negative)
+    last = fig.data[res.n_steer_steps - 1].line.color  # full positive steer
+    assert first != last and first != "rgb(217,217,217)"
+    # no min/max triangles anywhere
+    for t in fig.data:
+        marker = getattr(t, "marker", None)
+        if marker is not None and marker.symbol in ("triangle-down", "triangle-up"):
+            raise AssertionError("min/max triangle marker still present")
+    # standalone plot carries a steering colorbar
+    assert any(getattr(t, "marker", None) is not None and t.marker.showscale for t in fig.data)
 
 
 def test_analyze_page_assembles():

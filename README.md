@@ -68,15 +68,17 @@ display server required (works over SSH/VS-Codium).
 
 For 2-D hardpoint sets, `analyze` writes `suspension3d.html` as **one page**:
 the interactive 3-D viewer fills the top (with its shock + steering sliders),
-and the envelope plots sit below — scroll down to see them. Moving the sliders
-updates the envelopes in place, like the MATLAB visualizer:
+and the envelope plots sit below — scroll down to see them. The page opens
+**static** (no auto-play); moving the sliders updates the envelopes in place,
+like the MATLAB visualizer:
 
 - **steering slider** — switches which steering line is highlighted (bold),
-- **shock slider** — moves the red dot along the highlighted line,
-- min/max markers follow the current line.
+- **shock slider** — moves the red dot along the highlighted line.
 
-A static standalone envelope (`kinematics_envelope.html`, no moving parts) is
-also written for 2-D sets. No server needed — open the HTML directly.
+Envelope steering lines are colorcoded by steering position (Plotly
+`sunsetdark`, full negative → full positive steer). A static standalone
+envelope (`kinematics_envelope.html`, with the steering colorbar) is also
+written for 2-D sets. No server needed — open the HTML directly.
 
 ## Testing
 

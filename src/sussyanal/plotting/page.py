@@ -32,24 +32,16 @@ _BRIDGE_JS = r"""
     var s = msg.steer, h = msg.shock;
     var lineI = [], lineX = [], lineY = [];
     var ptI = [], ptX = [], ptY = [];
-    var mmI = [], mmX = [], mmY = [];
-    var i, m, y, imin, imax;
+    var i, m, y;
     for (i = 0; i < CFG.metrics.length; i++) {
       m = CFG.metrics[i];
       y = m.data[s];
       if (!y) continue;
       lineI.push(m.line); lineX.push(m.x); lineY.push(y);
       ptI.push(m.point); ptX.push(m.x[h]); ptY.push(y[h]);
-      imin = 0; imax = 0;
-      for (var j = 1; j < y.length; j++) {
-        if (y[j] < y[imin]) imin = j;
-        if (y[j] > y[imax]) imax = j;
-      }
-      mmI.push(m.min, m.max); mmX.push(m.x[imin], m.x[imax]); mmY.push(y[imin], y[imax]);
     }
     Plotly.restyle(gd2, { x: lineX, y: lineY }, lineI);
     Plotly.restyle(gd2, { x: ptX, y: ptY }, ptI);
-    Plotly.restyle(gd2, { x: mmX, y: mmY }, mmI);
     if (CFG.steerTravel && CFG.shockTravel) {
       var txt = "Steer: " + CFG.steerTravel[s].toFixed(2) +
                 " in | Shock: " + CFG.shockTravel[h].toFixed(2) + " in";
@@ -100,6 +92,7 @@ def analyze_page(
         div_id="viewer3d",
         default_width="100%",
         default_height="72vh",
+        auto_play=False,  # start static; sliders only move on user input
     )
     env_html = pio.to_html(
         envelope_fig,
@@ -108,6 +101,7 @@ def analyze_page(
         div_id="envelope",
         default_width="100%",
         default_height="980px",
+        auto_play=False,
     )
 
     cfg = dict(envelope_config)

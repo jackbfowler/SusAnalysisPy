@@ -5,6 +5,7 @@ import math
 
 import numpy as np
 import plotly.graph_objects as go
+from plotly.colors import sample_colorscale
 from plotly.subplots import make_subplots
 
 from ..kinematics.solver import KinematicResults
@@ -80,14 +81,15 @@ def surfaces_figure(results: KinematicResults) -> go.Figure:
 
 def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
     """Envelope plots (MATLAB ``do_envelope``): shock travel on the x-axis with
-    one gray line per steering step, plus overlay traces for the current state —
-    a bold current-steer line, min/max markers, and (``live=True``) a red
-    current-point marker and readout annotation.
+    one line per steering step, **colorcoded by steering position** (Plotly
+    ``sunsetdark``, full negative steer -> full positive steer), plus a bold
+    current-steer line and (``live=True``) a red current-point marker and
+    readout annotation.
 
-    ``live=True`` additionally stores the restyle config on the figure as
+    ``live=True`` stores the restyle config on the figure as
     ``fig._envelope_config`` so the combined analyze page can update the
     overlays when the 3-D viewer's sliders move. ``live=False`` is the static
-    standalone output (no moving parts).
+    standalone output, which additionally carries a steering colorbar.
     """
     n = len(_ENVELOPE_METRICS)  # 9
     fig = make_subplots(rows=3, cols=3, subplot_titles=[m[1] for m in _ENVELOPE_METRICS])
@@ -96,16 +98,20 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
     mid = math.ceil(ns / 2) - 1
     mid_shock = int(np.argmin(np.abs(results.shock_travel_axis)))
 
+    # color per steering step: negative steer -> one end of sunsetdark
+    positions = [s / (ns - 1) if ns > 1 else 0.5 for s in range(ns)]
+    steer_colors = sample_colorscale("sunsetdark", positions)
+
     metrics_cfg = []
     for k, (key, name, unit) in enumerate(_ENVELOPE_METRICS):
         z = _series(results, key)
         row, col = divmod(k, 3)
 
-        # gray family: one line per steering step (never restyled)
+        # steering family: one line per steering step, colorcoded by steer
         for s in range(ns):
             fig.add_trace(
                 go.Scatter(x=x, y=z[s, :], mode="lines",
-                           line=dict(color="rgb(217,217,217)", width=0.8),
+                           line=dict(color=steer_colors[s], width=1.2),
                            name=f"{name} (steer {s})",
                            showlegend=False, hoverinfo="skip"),
                 row=row + 1, col=col + 1,
@@ -120,23 +126,6 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
         )
         line_idx = len(fig.data) - 1
 
-        # min/max markers of the current line
-        i_min, i_max = int(np.argmin(z[mid, :])), int(np.argmax(z[mid, :]))
-        fig.add_trace(
-            go.Scatter(x=[x[i_min]], y=[z[mid, i_min]], mode="markers",
-                       marker=dict(symbol="triangle-down", size=10, color="black"),
-                       showlegend=False, hoverinfo="skip"),
-            row=row + 1, col=col + 1,
-        )
-        min_idx = len(fig.data) - 1
-        fig.add_trace(
-            go.Scatter(x=[x[i_max]], y=[z[mid, i_max]], mode="markers",
-                       marker=dict(symbol="triangle-up", size=10, color="black"),
-                       showlegend=False, hoverinfo="skip"),
-            row=row + 1, col=col + 1,
-        )
-        max_idx = len(fig.data) - 1
-
         if live:
             # red current-point marker (moved by the shock slider)
             fig.add_trace(
@@ -149,7 +138,6 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
             metrics_cfg.append(
                 {
                     "key": key, "line": line_idx, "point": point_idx,
-                    "min": min_idx, "max": max_idx,
                     "x": [float(v) for v in x],
                     "data": [[float(v) for v in row] for row in z],
                 }
@@ -157,6 +145,19 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
 
         fig.update_xaxes(title_text="Shock Travel (in)", row=row + 1, col=col + 1)
         fig.update_yaxes(title_text=unit, row=row + 1, col=col + 1)
+
+    if not live:
+        # steering colorbar (invisible dummy markers carry the scale)
+        rack = [float(v) for v in results.rack_travel_axis]
+        fig.add_trace(
+            go.Scatter(x=[float("nan")] * ns, y=[float("nan")] * ns, mode="markers",
+                       marker=dict(color=rack, colorscale="sunsetdark", showscale=True,
+                                   cmin=min(rack), cmax=max(rack),
+                                   colorbar=dict(title="Steering (in)", thickness=14),
+                                   size=1, opacity=0),
+                       showlegend=False, hoverinfo="skip"),
+            row=1, col=1,
+        )
 
     if live:
         fig.add_annotation(
