@@ -46,9 +46,10 @@ src/sussyanal/
 │   └── run_quasistatic.py # ~ run_quasistatic.m
 ├── plotting/
 │   ├── common.py          # colors, layout, wheel/arrow builders
-│   ├── kinematics.py      # curve + surface figures
-│   ├── suspension3d.py    # interactive 3-D model (slider/playback)
-│   └── forces3d.py        # 3-D force vectors
+│   ├── kinematics.py      # curve + surface + envelope figures
+│   ├── suspension3d.py    # interactive 3-D model (shock + steering sliders)
+│   ├── forces3d.py        # 3-D force vectors
+│   └── sync.py            # cross-tab state bus (BroadcastChannel) JS
 └── __main__.py            # CLI: python -m sussyanal analyze|forces|optimize <csv>
 ```
 
@@ -115,6 +116,17 @@ at static steer and the **steering slider** sweeps all steer steps at static
 ride height (dragging one snaps the other to static). The full 2-D coupling is
 shown by the surface and envelope plots (one line per steering step vs shock
 travel).
+
+### Cross-tab live sync (`plotting/sync.py`)
+
+The 3-D viewer broadcasts the current `(steer, shock)` step indices over a
+`BroadcastChannel` (with a `localStorage` fallback); the envelope page listens
+and restyles its overlay traces (current steering line, current point, min/max
+markers, readout annotation). The receiver only needs the two indices — all
+data already lives in its own traces. Requires same-origin serving over HTTP;
+on `file://` the pages degrade to their static state. Scripts are injected via
+`fig.write_html(..., post_script=...)` and validated against the MATLAB
+behavior (live bold line + dot + min/max as the sliders move).
 
 Headless policy: figures are written to `outputs/*.html` (gitignored).
 

@@ -11,13 +11,13 @@ from .kinematics import (
     optimize,
     report as optimize_report,
 )
-from .plotting import forces3d, kinematics as kin_plot, suspension3d
+from .plotting import forces3d, kinematics as kin_plot, suspension3d, sync
 
 
-def _write(fig, out_dir: Path, name: str) -> Path:
+def _write(fig, out_dir: Path, name: str, post_script: str | None = None) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / name
-    fig.write_html(path, include_plotlyjs=True)
+    fig.write_html(path, include_plotlyjs=True, post_script=post_script)
     print(f"Wrote {path}")
     return path
 
@@ -26,8 +26,15 @@ def _cmd_analyze(args) -> int:
     results = analyze_steer(args.csv, n_shock_steps=args.n_shock, progress=True)
     if results.is_2d:
         # envelope is the default for 2-D; surfaces are opt-in (MATLAB
-        # show_surface_plots defaults to false)
-        _write(kin_plot.envelope_figure(results), Path(args.out_dir), "kinematics_envelope.html")
+        # show_surface_plots defaults to false). The envelope listens to the
+        # 3-D viewer's sliders across tabs.
+        env_fig = kin_plot.envelope_figure(results)
+        _write(
+            env_fig,
+            Path(args.out_dir),
+            "kinematics_envelope.html",
+            post_script=sync.receiver_script(env_fig._sync_config),
+        )
         if args.surfaces:
             _write(kin_plot.surfaces_figure(results), Path(args.out_dir), "kinematics_surfaces.html")
     else:
@@ -36,10 +43,12 @@ def _cmd_analyze(args) -> int:
     from .geometry import SuspensionModel
 
     model = SuspensionModel(results.geometry, results.config)
+    shock_idxs, mid_steer, mid_shock = suspension3d.viewer_indices(results)
     _write(
         suspension3d.suspension_figure(model, results),
         Path(args.out_dir),
         "suspension3d.html",
+        post_script=sync.sender_script(shock_idxs, mid_steer, mid_shock),
     )
     return 0
 

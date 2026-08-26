@@ -199,6 +199,29 @@ def _state_traces(
     return traces
 
 
+def viewer_indices(results: KinematicResults, n_shock_frames: int | None = None):
+    """The (steer, shock) indices the interactive viewer uses.
+
+    Returns ``(shock_idxs, mid_steer, mid_shock)`` where ``shock_idxs`` are the
+    (subsampled) shock step indices used by the shock slider, ``mid_steer`` is
+    the static steer step, and ``mid_shock`` is the static ride-height shock
+    step. Used both to build the viewer and to configure the cross-tab sender.
+    """
+    if results.n_steer_steps > 1:
+        mid_steer = math.ceil(results.n_steer_steps / 2) - 1
+    else:
+        mid_steer = 0
+
+    if n_shock_frames is None:
+        n_shock_frames = min(results.n_shock_steps, 40)
+    shock_idxs = np.linspace(0, results.n_shock_steps - 1, n_shock_frames).round().astype(int).tolist()
+    mid_shock = int(np.argmin(np.abs(results.shock_travel_axis)))
+    if mid_shock not in shock_idxs:  # the steering slider needs a mid-shock frame
+        shock_idxs.append(mid_shock)
+        shock_idxs.sort()
+    return shock_idxs, mid_steer, mid_shock
+
+
 def suspension_figure(
     model: SuspensionModel,
     results: KinematicResults,
@@ -212,21 +235,12 @@ def suspension_figure(
     """
     if results.n_steer_steps > 1:
         steer_idxs = list(range(results.n_steer_steps))
-        mid_steer = math.ceil(results.n_steer_steps / 2) - 1
     else:
         steer_idxs = [0]
-        mid_steer = 0
+    shock_idxs, mid_steer, mid_shock = viewer_indices(results, n_shock_frames)
     if steer_idx is None:
         steer_idx = mid_steer
     steer_idx = int(np.clip(steer_idx, 0, results.n_steer_steps - 1))
-
-    if n_shock_frames is None:
-        n_shock_frames = min(results.n_shock_steps, 40)
-    shock_idxs = np.linspace(0, results.n_shock_steps - 1, n_shock_frames).round().astype(int).tolist()
-    mid_shock = int(np.argmin(np.abs(results.shock_travel_axis)))
-    if mid_shock not in shock_idxs:  # the steering slider needs a mid-shock frame
-        shock_idxs.append(mid_shock)
-        shock_idxs.sort()
 
     # coarser wheel mesh keeps the per-frame data small
     wheel_verts, wheel_tri = common.wheel_mesh(

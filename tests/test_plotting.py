@@ -43,5 +43,35 @@ def test_suspension3d_1d_has_only_shock_frames():
 def test_envelope_figure_2d():
     _, res = _results()
     fig = kin_plot.envelope_figure(res)
-    # one trace per steer step per metric (9 metrics), plus min/max markers
-    assert len(fig.data) >= 9 * res.n_steer_steps
+    # one trace per steer step per metric (9 metrics), plus 4 overlay traces
+    assert len(fig.data) >= 9 * res.n_steer_steps + 9 * 4
+    # sync config present and structurally valid
+    cfg = fig._sync_config
+    assert len(cfg["metrics"]) == 9
+    assert len(cfg["steerTravel"]) == res.n_steer_steps
+    assert len(cfg["shockTravel"]) == res.n_shock_steps
+    for m in cfg["metrics"]:
+        assert 0 <= m["line"] < m["point"] < m["min"] < m["max"] < len(fig.data)
+        assert len(m["data"]) == res.n_steer_steps
+        assert len(m["data"][0]) == res.n_shock_steps
+
+
+def test_viewer_indices_match_frames():
+    model, res = _results()
+    shock_idxs, mid_steer, mid_shock = suspension3d.viewer_indices(res)
+    assert mid_shock in shock_idxs
+    fig = suspension3d.suspension_figure(model, res)
+    frame_names = {f.name for f in fig.frames}
+    assert {f"h{i}" for i in shock_idxs} <= frame_names
+
+
+def test_sync_scripts_build():
+    from sussyanal.plotting import sync
+
+    sender = sync.sender_script([0, 5, 10, 15], mid_steer=10, mid_shock=8)
+    assert "BroadcastChannel" in sender and "plotly_sliderend" in sender
+    assert '"shock": [0, 5, 10, 15]' in sender
+
+    receiver = sync.receiver_script({"metrics": [], "steerTravel": [], "shockTravel": []})
+    assert "BroadcastChannel" in receiver and "Plotly.restyle" in receiver
+    assert "kind: \"hello\"" in receiver
