@@ -1,0 +1,22 @@
+,x,y,z
+Lower wishbone front pivot,40.7581,7.0015,1.500974
+Lower wishbone rear pivot,30.832646,7,0.282281
+Lower wishbone outer ball joint,36.300534,25.585612,-3.245521
+Upper wishbone front pivot,45.648646,7.540329,8.382625
+Upper wishbone rear pivot,30.249021,7.364305,6.5
+Upper wishbone outer ball joint,35.924605,23.791805,3.333233
+Damper wishbone end,36.164213,21.644394,5.215369
+Damper body end,31.60678,8.315592,20.355885
+Outer track rod ball joint,38.467038,25.587004,0.019279
+Inner track rod ball joint,41.682646,7.238095,4.64881
+Upper spring pivot point,31.60678,8.315592,20.355885
+Lower spring pivot point,36.164213,21.644394,5.215369
+Wheel spindle point,36.143647,24.837,-0.5
+Wheel centre point,36.143647,28,-0.5
+Outer axle joint,36.143647,24.837,-0.5
+Inner axle joint,36.875344,7.000741,3.433885
+,,,
+Steering rack,1.44,,
+Shock bump from ride,5,,
+Shock droop from ride,3,,
+Wheel size,21,,

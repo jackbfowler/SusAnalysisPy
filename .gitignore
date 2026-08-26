@@ -1,0 +1,29 @@
+# ---- Reference MATLAB implementation (do NOT track; reference only) ----
+/SusAnalysis/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ---- Generated media / outputs ----
+*.avi
+*.mp4
