@@ -13,23 +13,63 @@ development guidance.
 
 ## Install
 
+The package is installed into the project virtual environment (`.venv/`),
+**not** into the system Python.
+
 ```bash
-python -m venv .venv
-.venv/bin/pip install -e .
+# from the repo root
+python3 -m venv .venv                      # once (already done in this sandbox)
+.venv/bin/pip install -e .                 # installs sussyanal + numpy + plotly
+.venv/bin/pip install -e ".[dev]"          # optional: adds pytest for testing
 ```
+
+> `python3 -m sussyanal ...` fails with `No module named sussyanal` because the
+> system interpreter doesn't know about the venv. Always use the venv's Python
+> (below) or activate the venv first.
 
 ## Usage
 
+Use the venv's Python (or its `sussyanal` entry-point script) — either works:
+
 ```bash
-# Kinematic sweep (sussy_steer) + interactive 3-D + curve/surface plots
+# 1) run directly with the venv interpreter
 .venv/bin/python -m sussyanal analyze data/2026BajaFront_1-20.csv --out-dir outputs
 
+# 2) use the installed console script (same thing)
+.venv/bin/sussyanal analyze data/2026BajaFront_1-20.csv --out-dir outputs
+
+# 3) activate the venv once per shell, then plain `python` / `sussyanal` work
+source .venv/bin/activate
+python -m sussyanal analyze data/2026BajaFront_1-20.csv --out-dir outputs
+```
+
+### Commands
+
+```bash
+# Kinematic sweep (sussy_steer) + interactive 3-D + curve/surface plots
+sussyanal analyze <csv> [--n-shock 100] [--out-dir outputs]
+
 # Quasistatic force analysis + force visualization
-.venv/bin/python -m sussyanal forces data/2026BajaFront_1-20.csv --out-dir outputs
+sussyanal forces <csv> [--out-dir outputs]
 
 # Hardpoint grid-search optimizer
-.venv/bin/python -m sussyanal optimize data/2026BajaFront_1-20.csv --out-dir outputs
+sussyanal optimize <csv> [--point OuterTrackRodBallJoint] [--axes 3] \
+                       [--range 1.0] [--steps 50] [--objective bump_steer] \
+                       [--n-shock 30] [--out-dir outputs]
 ```
 
 Outputs are self-contained Plotly HTML files, viewable in any browser — no
 display server required (works over SSH/VS-Codium).
+
+## Testing
+
+```bash
+.venv/bin/python -m pytest              # run the test suite
+.venv/bin/python -m pytest -q           # quiet
+```
+
+Quick smoke check that the install is healthy:
+
+```bash
+.venv/bin/python -c "import sussyanal; print(sussyanal.__version__)"
+```
