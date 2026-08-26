@@ -23,6 +23,25 @@ _METRICS = [
 
 _ENVELOPE_METRICS = _METRICS + [("track_change", "Track Change", "in")]
 
+# target labeled tick count per axis (roughly double Plotly's auto density)
+_TARGET_TICKS = 10
+
+
+def _nice_tick_step(span: float, target_ticks: int) -> float:
+    """A 'nice' tick step (1/2/2.5/5 x 10^k) giving ~target_ticks intervals."""
+    if span <= 0:
+        return 1.0
+    raw = span / max(target_ticks, 1)
+    mag = 10.0 ** math.floor(math.log10(raw))
+    for m in (1, 2, 2.5, 5, 10):
+        if m * mag >= raw - 1e-12:
+            return m * mag
+    return 10.0 * mag
+
+
+def _nice_tick0(vmin: float, step: float) -> float:
+    return math.floor(vmin / step) * step
+
 
 def _series(results: KinematicResults, key: str) -> np.ndarray:
     return getattr(results, key)
@@ -103,6 +122,10 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
     steer_colors = sample_colorscale("sunsetdark", positions)
 
     metrics_cfg = []
+    # shared x-axis (shock travel): a nice step giving ~_TARGET_TICKS labels
+    dx = _nice_tick_step(float(x[-1] - x[0]), _TARGET_TICKS)
+    x0t = _nice_tick0(float(np.min(x)), dx)
+
     for k, (key, name, unit) in enumerate(_ENVELOPE_METRICS):
         z = _series(results, key)
         row, col = divmod(k, 3)
@@ -143,8 +166,15 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
                 }
             )
 
-        fig.update_xaxes(title_text="Shock Travel (in)", row=row + 1, col=col + 1)
-        fig.update_yaxes(title_text=unit, row=row + 1, col=col + 1)
+        # ~2x the labeled ticks on both axes (explicit linear tick spacing)
+        zmin = float(np.nanmin(z))
+        zspan = float(np.nanmax(z) - zmin)
+        dz = _nice_tick_step(zspan, _TARGET_TICKS)
+        z0t = _nice_tick0(zmin, dz)
+        fig.update_xaxes(tickmode="linear", dtick=dx, tick0=x0t,
+                         title_text="Shock Travel (in)", row=row + 1, col=col + 1)
+        fig.update_yaxes(tickmode="linear", dtick=dz, tick0=z0t,
+                         title_text=unit, row=row + 1, col=col + 1)
 
     if not live:
         # steering colorbar (invisible dummy markers carry the scale)
