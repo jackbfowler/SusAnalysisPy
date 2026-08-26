@@ -78,14 +78,16 @@ def surfaces_figure(results: KinematicResults) -> go.Figure:
     return fig
 
 
-def envelope_figure(results: KinematicResults) -> go.Figure:
+def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
     """Envelope plots (MATLAB ``do_envelope``): shock travel on the x-axis with
-    one gray line per steering step, plus overlay traces for the *current*
-    (steer, shock) state — a bold current-steer line, a current-point marker,
-    and min/max markers — updated live by the cross-tab sync when the 3-D
-    viewer's sliders move.
+    one gray line per steering step, plus overlay traces for the current state —
+    a bold current-steer line, min/max markers, and (``live=True``) a red
+    current-point marker and readout annotation.
 
-    The sync config is stored on the figure as ``fig._sync_config``.
+    ``live=True`` additionally stores the restyle config on the figure as
+    ``fig._envelope_config`` so the combined analyze page can update the
+    overlays when the 3-D viewer's sliders move. ``live=False`` is the static
+    standalone output (no moving parts).
     """
     n = len(_ENVELOPE_METRICS)  # 9
     fig = make_subplots(rows=3, cols=3, subplot_titles=[m[1] for m in _ENVELOPE_METRICS])
@@ -94,24 +96,22 @@ def envelope_figure(results: KinematicResults) -> go.Figure:
     mid = math.ceil(ns / 2) - 1
     mid_shock = int(np.argmin(np.abs(results.shock_travel_axis)))
 
-    sync_metrics = []
+    metrics_cfg = []
     for k, (key, name, unit) in enumerate(_ENVELOPE_METRICS):
         z = _series(results, key)
         row, col = divmod(k, 3)
 
-        # gray family: one line per steering step (never restyled by the sync)
+        # gray family: one line per steering step (never restyled)
         for s in range(ns):
             fig.add_trace(
-                go.Scatter(
-                    x=x, y=z[s, :], mode="lines",
-                    line=dict(color="rgb(217,217,217)", width=0.8),
-                    name=f"{name} (steer {s})",
-                    showlegend=False, hoverinfo="skip",
-                ),
+                go.Scatter(x=x, y=z[s, :], mode="lines",
+                           line=dict(color="rgb(217,217,217)", width=0.8),
+                           name=f"{name} (steer {s})",
+                           showlegend=False, hoverinfo="skip"),
                 row=row + 1, col=col + 1,
             )
 
-        # overlay traces for the current (steer, shock) state
+        # bold current-steer line
         fig.add_trace(
             go.Scatter(x=x, y=z[mid, :], mode="lines",
                        line=dict(color="rgb(31,119,180)", width=2.5),
@@ -120,14 +120,7 @@ def envelope_figure(results: KinematicResults) -> go.Figure:
         )
         line_idx = len(fig.data) - 1
 
-        fig.add_trace(
-            go.Scatter(x=[x[mid_shock]], y=[z[mid, mid_shock]], mode="markers",
-                       marker=dict(symbol="circle", size=10, color="red"),
-                       name=f"{name} (current point)", showlegend=False, hoverinfo="skip"),
-            row=row + 1, col=col + 1,
-        )
-        point_idx = len(fig.data) - 1
-
+        # min/max markers of the current line
         i_min, i_max = int(np.argmin(z[mid, :])), int(np.argmax(z[mid, :]))
         fig.add_trace(
             go.Scatter(x=[x[i_min]], y=[z[mid, i_min]], mode="markers",
@@ -144,31 +137,39 @@ def envelope_figure(results: KinematicResults) -> go.Figure:
         )
         max_idx = len(fig.data) - 1
 
+        if live:
+            # red current-point marker (moved by the shock slider)
+            fig.add_trace(
+                go.Scatter(x=[x[mid_shock]], y=[z[mid, mid_shock]], mode="markers",
+                           marker=dict(symbol="circle", size=10, color="red"),
+                           name=f"{name} (current point)", showlegend=False, hoverinfo="skip"),
+                row=row + 1, col=col + 1,
+            )
+            point_idx = len(fig.data) - 1
+            metrics_cfg.append(
+                {
+                    "key": key, "line": line_idx, "point": point_idx,
+                    "min": min_idx, "max": max_idx,
+                    "x": [float(v) for v in x],
+                    "data": [[float(v) for v in row] for row in z],
+                }
+            )
+
         fig.update_xaxes(title_text="Shock Travel (in)", row=row + 1, col=col + 1)
         fig.update_yaxes(title_text=unit, row=row + 1, col=col + 1)
 
-        sync_metrics.append(
-            {
-                "key": key,
-                "line": line_idx,
-                "point": point_idx,
-                "min": min_idx,
-                "max": max_idx,
-                "x": [float(v) for v in x],
-                "data": [[float(v) for v in row] for row in z],
-            }
+    if live:
+        fig.add_annotation(
+            text=f"Steer: {results.rack_travel_axis[mid]:+.2f} in | "
+                 f"Shock: {results.shock_travel_axis[mid_shock]:+.2f} in",
+            xref="paper", yref="paper", x=0.0, y=1.05, showarrow=False,
+            bgcolor="rgba(255,255,255,0.85)", bordercolor="black", borderpad=4,
         )
+        fig._envelope_config = {
+            "metrics": metrics_cfg,
+            "steerTravel": [float(v) for v in results.rack_travel_axis],
+            "shockTravel": [float(v) for v in x],
+        }
 
-    fig.add_annotation(
-        text=f"Steer: {results.rack_travel_axis[mid]:+.2f} in | "
-             f"Shock: {results.shock_travel_axis[mid_shock]:+.2f} in",
-        xref="paper", yref="paper", x=0.0, y=1.05, showarrow=False,
-        bgcolor="rgba(255,255,255,0.85)", bordercolor="black", borderpad=4,
-    )
     fig.update_layout(height=900, title_text="Envelope (one line per steering step)")
-    fig._sync_config = {
-        "metrics": sync_metrics,
-        "steerTravel": [float(v) for v in results.rack_travel_axis],
-        "shockTravel": [float(v) for v in x],
-    }
     return fig

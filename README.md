@@ -64,23 +64,19 @@ sussyanal optimize <csv> [--point OuterTrackRodBallJoint] [--axes 3] \
 Outputs are self-contained Plotly HTML files, viewable in any browser — no
 display server required (works over SSH/VS-Codium).
 
-## Live-linked plots (cross-tab)
+## Live-linked plots (single page)
 
-For 2-D hardpoint sets, `analyze` writes `suspension3d.html` and
-`kinematics_envelope.html` that link **live across browser tabs**: moving the
-sliders in the 3-D viewer updates the envelope's highlighted steering line,
-current point, and min/max markers — like the MATLAB visualizer. The sync uses
-`BroadcastChannel`, which requires the pages to share an origin, so serve the
-outputs over HTTP:
+For 2-D hardpoint sets, `analyze` writes `suspension3d.html` as **one page**:
+the interactive 3-D viewer fills the top (with its shock + steering sliders),
+and the envelope plots sit below — scroll down to see them. Moving the sliders
+updates the envelopes in place, like the MATLAB visualizer:
 
-```bash
-cd outputs && python3 -m http.server 8000
-# open http://localhost:8000/suspension3d.html  and
-#      http://localhost:8000/kinematics_envelope.html  in two tabs
-```
+- **steering slider** — switches which steering line is highlighted (bold),
+- **shock slider** — moves the red dot along the highlighted line,
+- min/max markers follow the current line.
 
-Opening the files via `file://` disables the live link (both pages still
-render, showing their static state).
+A static standalone envelope (`kinematics_envelope.html`, no moving parts) is
+also written for 2-D sets. No server needed — open the HTML directly.
 
 ## Testing
 

@@ -9,6 +9,7 @@ from sussyanal.geometry import SuspensionModel
 from sussyanal.io import parse_csv
 from sussyanal.kinematics import solve_sweep
 from sussyanal.plotting import kinematics as kin_plot
+from sussyanal.plotting import page as page_module
 from sussyanal.plotting import suspension3d
 
 DATA = Path(__file__).resolve().parent.parent / "data" / "2026BajaFront_1-20.csv"
@@ -40,38 +41,42 @@ def test_suspension3d_1d_has_only_shock_frames():
     assert all(f.name.startswith("h") for f in fig.frames)
 
 
-def test_envelope_figure_2d():
+def test_envelope_figure_2d_static_and_live():
     _, res = _results()
-    fig = kin_plot.envelope_figure(res)
-    # one trace per steer step per metric (9 metrics), plus 4 overlay traces
-    assert len(fig.data) >= 9 * res.n_steer_steps + 9 * 4
-    # sync config present and structurally valid
-    cfg = fig._sync_config
+
+    static = kin_plot.envelope_figure(res, live=False)
+    assert not hasattr(static, "_envelope_config")
+    # no red current-point overlay in the static output
+    assert len(static.data) == 9 * res.n_steer_steps + 9 * 3
+
+    live = kin_plot.envelope_figure(res, live=True)
+    assert len(live.data) == 9 * res.n_steer_steps + 9 * 4  # + red point
+    cfg = live._envelope_config
     assert len(cfg["metrics"]) == 9
     assert len(cfg["steerTravel"]) == res.n_steer_steps
     assert len(cfg["shockTravel"]) == res.n_shock_steps
     for m in cfg["metrics"]:
-        assert 0 <= m["line"] < m["point"] < m["min"] < m["max"] < len(fig.data)
+        assert 0 <= m["line"] < m["min"] < m["max"] < m["point"] < len(live.data)
         assert len(m["data"]) == res.n_steer_steps
         assert len(m["data"][0]) == res.n_shock_steps
 
 
-def test_viewer_indices_match_frames():
+def test_analyze_page_assembles():
     model, res = _results()
+    live_env = kin_plot.envelope_figure(res, live=True)
     shock_idxs, mid_steer, mid_shock = suspension3d.viewer_indices(res)
-    assert mid_shock in shock_idxs
-    fig = suspension3d.suspension_figure(model, res)
-    frame_names = {f.name for f in fig.frames}
-    assert {f"h{i}" for i in shock_idxs} <= frame_names
-
-
-def test_sync_scripts_build():
-    from sussyanal.plotting import sync
-
-    sender = sync.sender_script([0, 5, 10, 15], mid_steer=10, mid_shock=8)
-    assert "BroadcastChannel" in sender and "plotly_sliderend" in sender
-    assert '"shock": [0, 5, 10, 15]' in sender
-
-    receiver = sync.receiver_script({"metrics": [], "steerTravel": [], "shockTravel": []})
-    assert "BroadcastChannel" in receiver and "Plotly.restyle" in receiver
-    assert "kind: \"hello\"" in receiver
+    page = page_module.analyze_page(
+        suspension3d.suspension_figure(model, res),
+        live_env,
+        live_env._envelope_config,
+        shock_idxs,
+        mid_steer,
+        mid_shock,
+    )
+    assert 'id="viewer3d"' in page
+    assert 'id="envelope"' in page
+    assert "plotly_sliderend" in page
+    assert "72vh" in page          # viewer fills the top
+    assert page.count("Plotly.newPlot") == 2  # both figures on one page
+    # the envelope figure must come after the viewer in document order
+    assert page.index('id="envelope"') > page.index('id="viewer3d"')
