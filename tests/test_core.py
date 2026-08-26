@@ -37,16 +37,35 @@ def test_intersect_circle_sphere():
 
 
 def test_parse_csv():
-    geometry, config = parse_csv(DATA)
-    assert config.shock_mount_lca == 1
-    assert config.wheel_size == 23.0
-    assert config.wheelbase == 58.0
-    assert geometry.has_axle
+    data = parse_csv(DATA)
+    assert data.config.shock_mount_lca == 1
+    assert data.config.wheel_size == 23.0
+    assert data.config.wheelbase == 58.0
+    assert data.config.missing == ()
+    assert data.geometry.has_axle
+
+
+def test_config_is_per_hardpoint_set():
+    """Config parameters are specific to each hardpoint set's CSV."""
+    front26 = parse_csv(DATA.parent / "2026BajaFront.csv")
+    rear25 = parse_csv(DATA.parent / "2025BajaRear.csv")
+    sparse = parse_csv(DATA.parent / "2024BajaRear.csv")
+
+    assert front26.config.bump == 6.1 and front26.config.steer_sweep == 1.3
+    assert front26.config.shock_mount_lca == 1
+    assert front26.config.missing == ("wheelbase",)
+
+    assert rear25.config.bump == 4.41 and rear25.config.shock_mount_lca == 0
+    assert rear25.config.missing == ("wheelbase",)
+
+    # defaults fall back only for rows the set omits, and are tracked
+    assert sparse.config.bump == 5.0
+    assert sparse.config.missing == ("steer_sweep", "shock_mount_lca", "wheelbase")
 
 
 def test_solve_sweep_finite():
-    geometry, config = parse_csv(DATA)
-    model = SuspensionModel(geometry, config)
+    data = parse_csv(DATA)
+    model = SuspensionModel.from_data(data)
     res = solve_sweep(model, n_shock_steps=50)
     assert res.camber.shape == (res.n_steer_steps, 50)
     assert res.n_steer_steps > 1  # this CSV has steering

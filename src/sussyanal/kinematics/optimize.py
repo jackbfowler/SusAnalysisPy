@@ -74,7 +74,8 @@ def optimize(
     if objective not in _OBJECTIVES:
         raise ValueError(f"objective must be one of {_OBJECTIVES}")
 
-    geometry, config = parse_csv(csv)
+    data = parse_csv(csv)
+    geometry, config = data.geometry, data.config
     field = _resolve_field(opt_point)
     base_pos = np.asarray(getattr(geometry, field), dtype=float).copy()
 

@@ -14,9 +14,13 @@ def analyze(
     n_steer_steps: int | None = None,
     progress: bool = False,
 ) -> KinematicResults:
-    """Parse ``csv``, build the model, and run the shock x steer sweep."""
-    geometry, config = parse_csv(csv)
-    model = SuspensionModel(geometry, config)
+    """Parse ``csv``, build the model, and run the shock x steer sweep.
+
+    The configuration is taken from the hardpoint set's own CSV.
+    """
+    data = parse_csv(csv)
+    config = data.config
+    model = SuspensionModel.from_data(data)
     results = solve_sweep(
         model, n_shock_steps=n_shock_steps, n_steer_steps=n_steer_steps, progress=progress
     )

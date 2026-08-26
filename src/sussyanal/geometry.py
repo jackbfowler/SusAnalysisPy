@@ -106,12 +106,20 @@ def _atand(y, x):  # noqa: ANN001 - matches MATLAB atand(y/x)
 # --------------------------------------------------------------------------- #
 @dataclass
 class Config:
-    bump: float = 5.0
-    droop: float = 3.0
-    wheel_size: float = 23.0
-    steer_sweep: float = 0.0
-    shock_mount_lca: int = 0
-    wheelbase: float = 0.0
+    """Suspension configuration, specific to one hardpoint set.
+
+    Values are parsed from that set's CSV; ``missing`` lists any parameter
+    that the CSV did not define, for which the documented fallback default is
+    in effect for this set only.
+    """
+
+    bump: float = 5.0          # shock bump from ride height, in
+    droop: float = 3.0         # shock droop from ride height, in
+    wheel_size: float = 23.0   # wheel diameter, in
+    steer_sweep: float = 0.0   # +/- steering rack travel, in (0 = no steering)
+    shock_mount_lca: int = 0   # 1 = shock on LCA, 0 = shock on UCA
+    wheelbase: float = 0.0     # in (0 = not defined)
+    missing: tuple[str, ...] = ()
 
     @property
     def wheel_radius(self) -> float:
@@ -170,6 +178,19 @@ class Geometry:
         kwargs["outer_axle_joint"] = snake.get("outer_axle_joint")
         kwargs["inner_axle_joint"] = snake.get("inner_axle_joint")
         return cls(**kwargs)
+
+
+@dataclass
+class SuspensionData:
+    """One hardpoint set plus its own configuration.
+
+    The configuration parameters (bump, droop, wheel_size, steer_sweep,
+    shock_mount_lca, wheelbase) belong to the hardpoint set they came from —
+    they are never shared across sets.
+    """
+
+    geometry: Geometry
+    config: Config
 
 
 @dataclass
@@ -395,6 +416,11 @@ class SuspensionModel:
     @property
     def has_axle(self) -> bool:
         return self.axle is not None
+
+    @classmethod
+    def from_data(cls, data: "SuspensionData") -> "SuspensionModel":
+        """Build a model from a bundled hardpoint set + its own config."""
+        return cls(data.geometry, data.config)
 
     # ------------------------------------------------------------------ #
     def solve_arms(self, shock_length: float) -> tuple[Vec3, Vec3, Vec3, float]:

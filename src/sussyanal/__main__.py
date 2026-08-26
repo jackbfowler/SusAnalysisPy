@@ -1,4 +1,4 @@
-"""CLI entry point: ``python -m sussyanal analyze|forces|optimize|tie <csv>``."""
+"""CLI entry point: ``python -m sussyanal analyze|forces|optimize <csv>``."""
 from __future__ import annotations
 
 import argparse
@@ -9,9 +9,7 @@ from .kinematics import (
     analyze_steer,
     optimization_figure,
     optimize,
-    optimize_tie,
     report as optimize_report,
-    tie_figure,
 )
 from .plotting import forces3d, kinematics as kin_plot, suspension3d
 
@@ -65,22 +63,11 @@ def _cmd_optimize(args) -> int:
     return 0
 
 
-def _cmd_tie(args) -> int:
-    res = optimize_tie(args.csv, n_steps=args.n_steps)
-    print(
-        f"Optimal Inner Tie Rod (static XYZ): "
-        f"[{res.opt_point[0]:.3f}, {res.opt_point[1]:.3f}, {res.opt_point[2]:.3f}]\n"
-        f"Max Toe Deviation: {res.max_err:.4f} deg"
-    )
-    _write(tie_figure(res), Path(args.out_dir), "tie_on_arm.html")
-    return 0
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sussyanal", description="Baja suspension analysis")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    a = sub.add_parser("analyze", help="Run kinematic sweep + plots")
+    a = sub.add_parser("analyze", help="Run kinematic sweep + plots (sussy_steer)")
     a.add_argument("csv")
     a.add_argument("--n-shock", type=int, default=100)
     a.add_argument("--out-dir", default="outputs")
@@ -102,12 +89,6 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--n-shock", type=int, default=30)
     o.add_argument("--out-dir", default="outputs")
     o.set_defaults(fn=_cmd_optimize)
-
-    t = sub.add_parser("tie", help="Tie-rod-on-LCA mount optimizer")
-    t.add_argument("csv")
-    t.add_argument("--n-steps", type=int, default=20)
-    t.add_argument("--out-dir", default="outputs")
-    t.set_defaults(fn=_cmd_tie)
 
     args = parser.parse_args(argv)
     return args.fn(args)

@@ -43,8 +43,9 @@ def run_quasistatic(csv, inputs: QuasistaticInputs | None = None) -> Quasistatic
     if inputs is None:
         inputs = QuasistaticInputs()
 
-    geometry, config = parse_csv(csv)
-    model = SuspensionModel(geometry, config)
+    data = parse_csv(csv)
+    config = data.config
+    model = SuspensionModel.from_data(data)
 
     # Kinematics (mirrors run_quasistatic.m calling sussy_steer)
     results = solve_sweep(model, n_shock_steps=100)
