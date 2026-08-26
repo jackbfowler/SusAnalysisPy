@@ -23,6 +23,17 @@ _METRICS = [
 
 _ENVELOPE_METRICS = _METRICS + [("track_change", "Track Change", "in")]
 
+# Component-analysis metrics (MATLAB Figure 3/4): axle + arm articulation angles.
+_COMPONENT_METRICS = [
+    ("plunge", "Axle Plunge", "in"),
+    ("cv_out", "Outer CV", "deg"),
+    ("cv_in", "Inner CV", "deg"),
+    ("lca_angle", "LCA Articulation Delta", "deg"),
+    ("uca_angle", "UCA Articulation Delta", "deg"),
+    ("lca_angle_abs", "LCA Articulation Abs", "deg"),
+    ("uca_angle_abs", "UCA Articulation Abs", "deg"),
+]
+
 # target labeled tick count per axis (roughly double Plotly's auto density)
 _TARGET_TICKS = 10
 
@@ -98,20 +109,27 @@ def surfaces_figure(results: KinematicResults) -> go.Figure:
     return fig
 
 
-def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
+def envelope_figure(
+    results: KinematicResults,
+    live: bool = False,
+    metrics: list | None = None,
+) -> go.Figure:
     """Envelope plots (MATLAB ``do_envelope``): shock travel on the x-axis with
     one line per steering step, **colorcoded by steering position** (Plotly
     ``sunsetdark``, full negative steer -> full positive steer), plus a bold
-    current-steer line and (``live=True``) a red current-point marker and
-    readout annotation.
+    current-steer line and (``live=True``) a red current-point marker.
 
-    ``live=True`` stores the restyle config on the figure as
-    ``fig._envelope_config`` so the combined analyze page can update the
+    ``metrics`` is the list of ``(key, name, unit)`` to plot (default: the
+    suspension metrics). ``live=True`` stores the restyle config on the figure
+    as ``fig._envelope_config`` so the combined analyze page can update the
     overlays when the 3-D viewer's sliders move. ``live=False`` is the static
     standalone output, which additionally carries a steering colorbar.
     """
-    n = len(_ENVELOPE_METRICS)  # 9
-    fig = make_subplots(rows=3, cols=3, subplot_titles=[m[1] for m in _ENVELOPE_METRICS])
+    if metrics is None:
+        metrics = _ENVELOPE_METRICS
+    cols = math.ceil(math.sqrt(len(metrics)))
+    rows = math.ceil(len(metrics) / cols)
+    fig = make_subplots(rows=rows, cols=cols, subplot_titles=[m[1] for m in metrics])
     x = results.shock_travel_axis
     ns = results.n_steer_steps
     mid = math.ceil(ns / 2) - 1
@@ -126,9 +144,9 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
     dx = _nice_tick_step(float(x[-1] - x[0]), _TARGET_TICKS)
     x0t = _nice_tick0(float(np.min(x)), dx)
 
-    for k, (key, name, unit) in enumerate(_ENVELOPE_METRICS):
+    for k, (key, name, unit) in enumerate(metrics):
         z = _series(results, key)
-        row, col = divmod(k, 3)
+        row, col = divmod(k, cols)
 
         # steering family: one line per steering step, colorcoded by steer
         for s in range(ns):
@@ -195,3 +213,13 @@ def envelope_figure(results: KinematicResults, live: bool = False) -> go.Figure:
 
     fig.update_layout(height=900)
     return fig
+
+
+def component_figure(results: KinematicResults, live: bool = False) -> go.Figure:
+    """Static component-analysis envelope (MATLAB Figure 4): axle plunge, CV
+    angles, and LCA/UCA articulation angles, in the same colorcoded-envelope
+    style as :func:`envelope_figure`. Axle metrics are omitted when the set has
+    no axle.
+    """
+    metrics = [m for m in _COMPONENT_METRICS if _series(results, m[0]) is not None]
+    return envelope_figure(results, live=live, metrics=metrics)

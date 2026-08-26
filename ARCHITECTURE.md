@@ -105,7 +105,7 @@ active for that set only).
 | --- | --- |
 | `create_plots` 1-D curves | `plotting.kinematics.curve_figure()` |
 | `create_plots` 2-D surfaces | `plotting.kinematics.surfaces_figure()` |
-| `create_plots` envelope (`do_envelope`) | `plotting.kinematics.envelope_figure()` |
+| `create_plots` envelope (`do_envelope`) | `plotting.kinematics.envelope_figure()` (suspension metrics) and `plotting.kinematics.component_figure()` (MATLAB Figure 4: plunge, CV, LCA/UCA articulation angles) |
 | `create_vis` interactive 3-D + sliders | `plotting.suspension3d.suspension_figure()` (shock **and** steering sliders) |
 | `visualize_forces` vectors | `plotting.forces3d.forces_figure()` |
 | `sussy_optimize` cost maps | `kinematics.optimize.optimization_figure()` |

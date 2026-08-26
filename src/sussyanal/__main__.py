@@ -33,6 +33,9 @@ def _write_page(html: str, out_dir: Path, name: str) -> Path:
 def _cmd_analyze(args) -> int:
     results = analyze_steer(args.csv, n_shock_steps=args.n_shock, progress=True)
 
+    # static component-analysis plot (axle plunge, CV, arm articulation angles)
+    _write(kin_plot.component_figure(results), Path(args.out_dir), "kinematics_component.html")
+
     from .geometry import SuspensionModel
 
     model = SuspensionModel(results.geometry, results.config)

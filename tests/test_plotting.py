@@ -76,6 +76,18 @@ def test_envelope_steer_lines_colorcoded():
     assert any(getattr(t, "marker", None) is not None and t.marker.showscale for t in fig.data)
 
 
+def test_component_figure_includes_articulation_angles():
+    _, res = _results()
+    fig = kin_plot.component_figure(res, live=False)
+    names = [t.name or "" for t in fig.data]
+    assert any("LCA Articulation" in n for n in names)
+    assert any("UCA Articulation" in n for n in names)
+    assert any("Axle Plunge" in n for n in names)
+    assert any("Outer CV" in n for n in names)
+    # one steering-family line per steer step per metric (7 metrics)
+    assert len(fig.data) >= 7 * res.n_steer_steps
+
+
 def test_analyze_page_assembles():
     model, res = _results()
     live_env = kin_plot.envelope_figure(res, live=True)

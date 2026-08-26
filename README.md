@@ -77,8 +77,10 @@ like the MATLAB visualizer:
 
 Envelope steering lines are colorcoded by steering position (Plotly
 `sunsetdark`, full negative → full positive steer). A static standalone
-envelope (`kinematics_envelope.html`, with the steering colorbar) is also
-written for 2-D sets. No server needed — open the HTML directly.
+envelope (`kinematics_envelope.html`, with the steering colorbar) and a static
+**component-analysis** plot (`kinematics_component.html` — axle plunge, CV
+angles, and LCA/UCA articulation angles, same envelope style) are also written
+for 2-D sets. No server needed — open the HTML directly.
 
 ## Testing
 
