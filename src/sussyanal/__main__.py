@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import time
 from pathlib import Path
 
 from .forces import run_quasistatic, report
@@ -13,63 +15,94 @@ from .kinematics import (
 )
 from .plotting import forces3d, kinematics as kin_plot, page as page_module, suspension3d
 
+_WRITE_ATTEMPTS = 8
+_WRITE_DELAY_S = 1.0
+
+
+def _atomic_write(fn, path: Path) -> None:
+    """Write ``path`` via a temp file + rename, retrying transient EPERM.
+
+    The workspace sits on a virtiofs share from a macOS host; while the host
+    briefly touches a file (Spotlight indexing, Finder, file coordination) the
+    guest sees ``EPERM: Operation not permitted`` instead of a normal error.
+    Writing to a fresh temp name and renaming over the target avoids opening
+    the host-locked file, and the retry loop rides out any residual transient.
+    """
+    out_dir = path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    tmp = out_dir / f".{path.name}.tmp{os.getpid()}"
+    last_err: OSError | None = None
+    for attempt in range(_WRITE_ATTEMPTS):
+        try:
+            fn(tmp)
+            os.replace(tmp, path)
+            return
+        except PermissionError as e:
+            last_err = e
+            time.sleep(_WRITE_DELAY_S * (attempt + 1))
+    if last_err is not None:
+        raise last_err
+
 
 def _write(fig, out_dir: Path, name: str) -> Path:
-    out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / name
-    fig.write_html(path, include_plotlyjs=True)
+    _atomic_write(
+        lambda tmp: fig.write_html(tmp, include_plotlyjs=True), path
+    )
     print(f"Wrote {path}")
     return path
 
 
 def _write_page(html: str, out_dir: Path, name: str) -> Path:
-    out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / name
-    path.write_text(html, encoding="utf-8")
+    _atomic_write(
+        lambda tmp: tmp.write_text(html, encoding="utf-8"), path
+    )
     print(f"Wrote {path}")
     return path
 
 
 def _cmd_analyze(args) -> int:
     results = analyze_steer(args.csv, n_shock_steps=args.n_shock, progress=True)
+    stem = Path(args.csv).stem
+    out_dir = Path(args.out_dir)
 
     # static component-analysis plot (axle plunge, CV, arm articulation angles)
-    _write(kin_plot.component_figure(results), Path(args.out_dir), "kinematics_component.html")
+    _write(kin_plot.component_figure(results, title=stem), out_dir,
+           f"{stem}_kinematics_component.html")
 
     from .geometry import SuspensionModel
 
     model = SuspensionModel(results.geometry, results.config)
 
     if results.is_2d:
-        # static envelope output (no moving parts)
-        _write(kin_plot.envelope_figure(results), Path(args.out_dir), "kinematics_envelope.html")
+        # static envelope output (no moving parts); standalone keeps the
+        # steering colorbar as its legend
+        _write(kin_plot.envelope_figure(results), out_dir,
+               f"{stem}_kinematics_envelope.html")
         if args.surfaces:
-            _write(kin_plot.surfaces_figure(results), Path(args.out_dir), "kinematics_surfaces.html")
-
-        # combined page: 3-D viewer fills the top, live envelope below
-        live_env = kin_plot.envelope_figure(results, live=True)
-        shock_idxs, mid_steer, mid_shock = suspension3d.viewer_indices(results)
-        page = page_module.analyze_page(
-            suspension3d.suspension_figure(model, results),
-            live_env,
-            live_env._envelope_config,
-            shock_idxs,
-            mid_steer,
-            mid_shock,
-        )
-        _write_page(page, Path(args.out_dir), "suspension3d.html")
+            _write(kin_plot.surfaces_figure(results), out_dir,
+                   f"{stem}_kinematics_surfaces.html")
     else:
-        _write(kin_plot.curve_figure(results), Path(args.out_dir), "kinematics_curves.html")
+        # 1-D (zero-steer) static output: same envelope figure as the live
+        # overlay below the 3-D graph (3x3 grid, shared formatting), just
+        # without the moving red dot — no separate curve implementation.
+        _write(kin_plot.envelope_figure(results), out_dir,
+               f"{stem}_kinematics_curves.html")
 
-        # 1-D viewer (single figure), filling the viewport; static on load
-        viewer = suspension3d.suspension_figure(model, results)
-        viewer.update_layout(height=None)
-        _write_page(
-            viewer.to_html(full_html=True, include_plotlyjs=True,
-                           default_width="100%", default_height="100vh", auto_play=False),
-            Path(args.out_dir),
-            "suspension3d.html",
-        )
+    # combined page for BOTH modes: 3-D viewer fills the top (CSV title), live
+    # envelope below (no steering colorbar; 1-D sets show no steering lines)
+    live_env = kin_plot.envelope_figure(results, live=True)
+    shock_idxs, mid_steer, mid_shock = suspension3d.viewer_indices(results)
+    page = page_module.analyze_page(
+        suspension3d.suspension_figure(model, results, title=stem),
+        live_env,
+        live_env._envelope_config,
+        shock_idxs,
+        mid_steer,
+        mid_shock,
+    )
+    _write_page(page, out_dir, f"{stem}_suspension3d.html")
     return 0
 
 

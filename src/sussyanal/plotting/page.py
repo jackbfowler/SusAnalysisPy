@@ -31,17 +31,20 @@ _BRIDGE_JS = r"""
     if (!gd2) return;
     var s = msg.steer, h = msg.shock;
     var lineI = [], lineX = [], lineY = [];
-    var ptI = [], ptX = [], ptY = [];
-    var i, m, y;
+    var shapeUpdate = {};
+    var i, m, y, xv;
     for (i = 0; i < CFG.metrics.length; i++) {
       m = CFG.metrics[i];
       y = m.data[s];
       if (!y) continue;
       lineI.push(m.line); lineX.push(m.x); lineY.push(y);
-      ptI.push(m.point); ptX.push(m.x[h]); ptY.push(y[h]);
+      // current shock travel: move the subplot's vertical line (layout shape)
+      xv = m.x[h];
+      shapeUpdate["shapes[" + m.shape + "].x0"] = xv;
+      shapeUpdate["shapes[" + m.shape + "].x1"] = xv;
     }
     Plotly.restyle(gd2, { x: lineX, y: lineY }, lineI);
-    Plotly.restyle(gd2, { x: ptX, y: ptY }, ptI);
+    Plotly.relayout(gd2, shapeUpdate);
   }
 
   function sliderEnd(evt) {

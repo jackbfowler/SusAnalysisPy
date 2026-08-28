@@ -43,8 +43,6 @@ def _state_traces(
     results: KinematicResults,
     steer_idx: int,
     shock_idx: int,
-    wheel_verts: np.ndarray,
-    wheel_tri: np.ndarray,
     static_pts: np.ndarray,
 ) -> list:
     lca_f, lca_r = model.lca.front, model.lca.rear
@@ -108,32 +106,46 @@ def _state_traces(
             mode="lines", line=dict(color=common.COLORS["kp"], width=6), name="kingpin",
         )
     )
+    # KP ground family: always append the same 4 traces so every animation
+    # frame has identical trace indices (Plotly maps frame traces to the base
+    # figure by index — a missing trace shifts all subsequent ones and breaks
+    # the slider animation). When kg is NaN pass [None] to render an empty
+    # trace without disturbing the index order.
     if not np.isnan(kg).any():
-        traces.append(
-            go.Scatter3d(
-                x=[lo[0], kg[0]], y=[lo[1], kg[1]], z=[lo[2], kg[2]],
-                mode="lines", line=dict(color="red", width=2, dash="dash"),
-                name="KP extension",
-            )
+        ext_x, ext_y, ext_z = [lo[0], kg[0]], [lo[1], kg[1]], [lo[2], kg[2]]
+        scr_x, scr_y, scr_z = [kg[0], kg[0]], [kg[1], cp[1]], [kg[2], kg[2]]
+        trl_x, trl_y, trl_z = [kg[0], cp[0]], [cp[1], cp[1]], [kg[2], kg[2]]
+        mkr_x, mkr_y, mkr_z = [kg[0]], [kg[1]], [kg[2]]
+    else:
+        ext_x = ext_y = ext_z = [None]
+        scr_x = scr_y = scr_z = [None]
+        trl_x = trl_y = trl_z = [None]
+        mkr_x = mkr_y = mkr_z = [None]
+    traces.append(
+        go.Scatter3d(
+            x=ext_x, y=ext_y, z=ext_z,
+            mode="lines", line=dict(color="red", width=2, dash="dash"),
+            name="KP extension",
         )
-        traces.append(
-            go.Scatter3d(
-                x=[kg[0], kg[0]], y=[kg[1], cp[1]], z=[kg[2], kg[2]],
-                mode="lines", line=dict(color="green", width=3), name="scrub",
-            )
+    )
+    traces.append(
+        go.Scatter3d(
+            x=scr_x, y=scr_y, z=scr_z,
+            mode="lines", line=dict(color="green", width=3), name="scrub",
         )
-        traces.append(
-            go.Scatter3d(
-                x=[kg[0], cp[0]], y=[cp[1], cp[1]], z=[kg[2], kg[2]],
-                mode="lines", line=dict(color="blue", width=3), name="trail",
-            )
+    )
+    traces.append(
+        go.Scatter3d(
+            x=trl_x, y=trl_y, z=trl_z,
+            mode="lines", line=dict(color="blue", width=3), name="trail",
         )
-        traces.append(
-            go.Scatter3d(
-                x=[kg[0]], y=[kg[1]], z=[kg[2]], mode="markers",
-                marker=dict(size=6, color="red", symbol="x"), name="KP ground",
-            )
+    )
+    traces.append(
+        go.Scatter3d(
+            x=mkr_x, y=mkr_y, z=mkr_z, mode="markers",
+            marker=dict(size=6, color="red", symbol="x"), name="KP ground",
         )
+    )
 
     # shock / tie / axle / hub
     traces.append(
@@ -181,21 +193,19 @@ def _state_traces(
         )
     )
 
-    # wheel (mesh + rim)
-    wx, wy, wz = common.transform_points(wheel_verts, wc, hub)
-    traces.append(
-        go.Mesh3d(
-            x=wx, y=wy, z=wz, i=wheel_tri[:, 0], j=wheel_tri[:, 1], k=wheel_tri[:, 2],
-            color=common.COLORS["wheel"], opacity=0.8, name="wheel", showscale=False,
+    # wheel: inner and outer edge circles only (no triangle mesh)
+    hub_dir = hub / float(np.linalg.norm(hub))
+    half_w = model.config.wheel_width / 2.0
+    for offset, name_ in ((half_w, "wheel outer"), (-half_w, "wheel inner")):
+        edge = wc + hub_dir * offset
+        ex, ey, ez = common.rim_circle(edge, hub, model.config.wheel_size)
+        traces.append(
+            go.Scatter3d(
+                x=ex, y=ey, z=ez, mode="lines",
+                line=dict(color=common.COLORS["wheel"], width=2),
+                name=name_, hoverinfo="skip",
+            )
         )
-    )
-    rx, ry, rz = common.rim_circle(wc, hub, model.config.wheel_size)
-    traces.append(
-        go.Scatter3d(
-            x=rx, y=ry, z=rz, mode="lines", line=dict(color="white", width=3),
-            name="rim", hoverinfo="skip",
-        )
-    )
     return traces
 
 
@@ -227,11 +237,13 @@ def suspension_figure(
     results: KinematicResults,
     steer_idx: int | None = None,
     n_shock_frames: int | None = None,
+    title: str = "",
 ) -> go.Figure:
     """Interactive 3-D figure with shock slider (+ steering slider when 2-D).
 
     The shock slider sweeps all shock steps at the static steer; for 2-D data a
-    steering slider sweeps all steer steps at static ride height.
+    steering slider sweeps all steer steps at static ride height. ``title``
+    sets the figure title text (e.g. the CSV name).
     """
     if results.n_steer_steps > 1:
         steer_idxs = list(range(results.n_steer_steps))
@@ -242,14 +254,10 @@ def suspension_figure(
         steer_idx = mid_steer
     steer_idx = int(np.clip(steer_idx, 0, results.n_steer_steps - 1))
 
-    # coarser wheel mesh keeps the per-frame data small
-    wheel_verts, wheel_tri = common.wheel_mesh(
-        model.config.wheel_size, model.config.wheel_width, n_theta=24
-    )
     static_pts = _static_points(model)
 
     def traces(s: int, h: int):
-        return _state_traces(model, results, s, h, wheel_verts, wheel_tri, static_pts)
+        return _state_traces(model, results, s, h, static_pts)
 
     # Frames: every (mid_steer, h) named h{h}, plus every (s, mid_shock) named s{s}.
     frames = [go.Frame(data=traces(mid_steer, h), name=f"h{h}") for h in shock_idxs]
@@ -258,7 +266,7 @@ def suspension_figure(
             frames.append(go.Frame(data=traces(s, mid_shock), name=f"s{s}"))
 
     fig = go.Figure(data=traces(steer_idx, mid_shock))
-    common.layout3d(fig, title="")
+    common.layout3d(fig, title=title)
     fig.frames = frames
 
     shock_mid_pos = int(np.argmin(np.abs(np.array(shock_idxs) - mid_shock)))

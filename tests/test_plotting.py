@@ -46,17 +46,29 @@ def test_envelope_figure_2d_static_and_live():
 
     static = kin_plot.envelope_figure(res, live=False)
     assert not hasattr(static, "_envelope_config")
-    # per metric: steering family + current line; plus one colorbar carrier
-    assert len(static.data) == 9 * (res.n_steer_steps + 1) + 1
+    # per metric: steering family only (no bold current line in static);
+    # plus one colorbar carrier
+    assert len(static.data) == 9 * res.n_steer_steps + 1
+    # every steering line is hoverable and shows the steering angle
+    for t in static.data:
+        if t.marker is not None and getattr(t.marker, "showscale", False):
+            continue  # colorbar carrier
+        assert t.hovertemplate is not None
+        assert "Steering:" in t.hovertemplate
 
     live = kin_plot.envelope_figure(res, live=True)
-    assert len(live.data) == 9 * (res.n_steer_steps + 2)  # + red point per metric
+    # per metric: steering family + bold current line (no red point trace now;
+    # the current shock position is a layout shape instead)
+    assert len(live.data) == 9 * (res.n_steer_steps + 1)
     cfg = live._envelope_config
     assert set(cfg) == {"metrics"}
     assert len(cfg["metrics"]) == 9
-    for m in cfg["metrics"]:
-        assert 0 <= m["line"] < m["point"] < len(live.data)
-        assert set(m) == {"key", "line", "point", "x", "data"}
+    # one vertical shock-travel line per subplot, referenced by shape index
+    assert len(live.layout.shapes) == 9
+    for i, m in enumerate(cfg["metrics"]):
+        assert 0 <= m["line"] < len(live.data)
+        assert m["shape"] == i
+        assert set(m) == {"key", "line", "shape", "x", "data"}
         assert len(m["data"]) == res.n_steer_steps
         assert len(m["data"][0]) == res.n_shock_steps
 

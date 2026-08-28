@@ -1,8 +1,6 @@
 """Suspension geometry analyzer with steering sweep (port of ``sussy_steer.m``)."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from ..geometry import SuspensionModel
 from ..io import parse_csv
 from .solver import KinematicResults, solve_sweep
