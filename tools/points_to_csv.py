@@ -1,18 +1,38 @@
 #!/usr/bin/env python3
-"""Convert a mm hardpoint export into an analyzer-ready CSV (inches).
+"""Convert a hardpoint export (mm) into an io.py-compatible CSV (inches).
 
-Steps:
-  1. Read the input file (mm values).
-  2. Parse it — either plain rows of ``x y z`` (fixed 20-row order; rows 15-18
-     "Part N C of G" and row 20 "Inner CV Axis Point" are non-pickup info and
-     are skipped) or labelled ``(N) Point N: <name> <x>`` blocks mapped by name.
-  3. Map pickup points to the canonical 16 hardpoint rows (row 19 "Inboard CV
-     Centre" -> Inner axle joint; Outer axle joint = Wheel spindle point).
-  4. Convert mm -> inches (divide by 25.4) and write the CSV, with config rows
-     (steering rack, shock bump/droop, ...) left as ``XXXX`` placeholders.
+python tools/points_to_csv.py "pointsimport.txt" "data/2027BajaRear.csv"
 
-Call it with the input file and output CSV:
 
+Two input formats are supported:
+
+1. Plain tab/space-separated rows, in this fixed order (20 rows):
+
+       -421.700  298.400  62.800      #  1 Lower wishbone front pivot
+       -1081.850 109.917  5.004       #  2 Lower wishbone rear pivot
+       ...                            # ... wishbones, damper, track rod, spring
+       -976.460  588.948  12.700      # 13 Wheel spindle point
+       -976.460  670.621  12.700      # 14 Wheel centre point
+       -0.000    0.302    -1.923      # 15 Part 1 C of G          (skipped)
+       -0.091    0.578    -2.146      # 16 Part 2 C of G          (skipped)
+       0.095     0.650    -0.695      # 17 Part 3 C of G          (skipped)
+       -0.158    0.225    -0.412      # 18 Part 4 C of G          (skipped)
+       -992.700  80.000   76.248      # 19 Inboard CV Centre -> Inner axle joint
+       -992.700  40.000   76.248      # 20 Inner CV Axis Point    (skipped)
+
+2. Labelled blocks (the "(N) Point N: <name> <x>" format), mapped by name:
+
+       (1) Point 1: Lower Wishbone Front Pivot -421.700
+       298.400
+       62.800
+
+Values are millimetres; the output CSV is in inches (divide by 25.4).
+
+Non-pickup rows ("Part N C of G", "Inner CV Axis Point", ...) are skipped.
+Config rows (steering rack, shock bump/droop, ...) are written as XXXX
+placeholders, to be filled in before running the analyzer.
+
+Usage:
     python tools/points_to_csv.py <input.txt> <output.csv>
     python tools/points_to_csv.py pointsimport.txt data/2027BajaRear.csv
 """
