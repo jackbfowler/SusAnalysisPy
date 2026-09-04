@@ -15,16 +15,22 @@ scope — neither is ported.
 
 ## Repository layout
 
-- `src/sussyanal/io.py` — CSV hardpoint/config parsing → `SuspensionData`.
+- `src/sussyanal/io.py` — shared-format (`"name" = value` SolidWorks txt) parsing
+  → `SuspensionData`; legacy CSV parsing deprecated (warns, kept for migration).
 - `src/sussyanal/geometry.py` — math helpers, dataclasses, `SuspensionModel`.
 - `src/sussyanal/kinematics/solver.py` — `solve_sweep()` + `KinematicResults`.
 - `src/sussyanal/kinematics/steer.py` — the `sussy_steer` analyzer.
 - `src/sussyanal/kinematics/optimize.py` — hardpoint grid-search optimizer.
 - `src/sussyanal/forces/` — `solve_forces.py` + `run_quasistatic.py`.
 - `src/sussyanal/plotting/` — Plotly figures (envelope, surfaces, 3-D, forces).
-- `tools/points_to_csv.py` — converts mm hardpoint exports (plain rows or
-  `(N) Point N: Name` blocks) into `io.py`-compatible inch CSVs.
-- `data/` — canonical input CSVs. `tests/` — pytest suite. `outputs/` — generated HTML (gitignored).
+- `tools/points_to_csv.py` — imports ONE LOTUS mm corner export (plain rows or
+  `(N) Point N: Name` blocks) into the shared `datanew/*.txt` (`--axle
+  front|rear`; merges into an existing file, leaving the other corner blank).
+- `tools/csv_to_shared.py` — migrates a legacy front+rear `data/*.csv` pair
+  into one shared `datanew/*.txt`.
+- `datanew/` — canonical shared inputs (front+rear per year/version in one
+  file). `data/` — legacy per-corner CSVs (deprecated). `tests/` — pytest
+  suite. `outputs/` — generated HTML (gitignored).
 
 ## MATLAB → Python mapping
 
@@ -37,19 +43,26 @@ scope — neither is ported.
 | `visualize_forces.m` | `plotting/forces3d.py` |
 | `print_axle.m` (parsing) | `io.py` |
 
-## Configuration is per hardpoint set
+## Configuration is per hardpoint set / corner
 
-`bump`, `droop`, `wheel_size`, `steer_sweep`, `shock_mount_lca`, `wheelbase`
-are parsed from each set's own CSV and bundled with its geometry via
-`SuspensionData(geometry, config)`. **Never** introduce a shared/global config;
-always build models with `SuspensionModel.from_data(data)`. Fields the CSV
-omits keep documented fallback defaults for that set only, tracked in
+`bump`, `droop`, `wheel_size`, `steer_sweep`, `shock_mount_lca` (and legacy
+`wheelbase`) belong to the hardpoint set and are bundled with its geometry via
+`SuspensionData(geometry, config)`. Shared `datanew/*.txt` files hold BOTH
+axles; `io.parse_csv(path, axle="front"|"rear")` parses ONE corner — front and
+rear simulations stay separate, chosen via `--axle` at the CLI. `steering_rack`
+is the shared front rack (rear parses get `steer_sweep = 0`), and per-axle
+values carry `_front`/`_rear` suffixes. **Never** introduce a shared/global
+config; always build models with `SuspensionModel.from_data(data)`. Fields the
+file omits keep documented fallback defaults for that corner only, tracked in
 `Config.missing`.
 
-**A note on `XXXX` placeholders**: newly generated CSVs may ship config values
-as `XXXX` (from `tools/points_to_csv.py`). `parse_csv` will raise
+**A note on `XXXX` / blank config**: legacy CSVs may ship config values as
+`XXXX` (from the old importer) — `parse_csv` raises
 `ValueError: could not convert string to float: 'XXXX'` until real numbers are
-filled in — that is expected for "fill in later" placeholders.
+filled in. Shared files created by `tools/points_to_csv.py` leave config lines
+blank (a LOTUS export has no config); parsing then silently falls back to
+defaults with the fields listed in `Config.missing` — fill the blanks before
+running a real analysis.
 
 ## Conventions
 

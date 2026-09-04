@@ -1,4 +1,4 @@
-"""CLI entry point: ``python -m sussyanal analyze|forces|optimize <csv>``."""
+"""CLI entry point: ``python -m sussyanal analyze|forces|optimize <file>``."""
 from __future__ import annotations
 
 import argparse
@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from .forces import run_quasistatic, report
+from .io import detect_format
 from .kinematics import (
     analyze_steer,
     optimization_figure,
@@ -62,9 +63,19 @@ def _write_page(html: str, out_dir: Path, name: str) -> Path:
     return path
 
 
+def _output_stem(path: str, axle: str | None) -> str:
+    """Output-file prefix: the file stem, plus the axle for shared files
+    (front/rear live in the same datanew/*.txt, so outputs must not collide)."""
+    stem = Path(path).stem
+    if detect_format(path) == "shared":
+        stem = f"{stem}_{axle}"
+    return stem
+
+
 def _cmd_analyze(args) -> int:
-    results = analyze_steer(args.csv, n_shock_steps=args.n_shock, progress=True)
-    stem = Path(args.csv).stem
+    results = analyze_steer(args.file, n_shock_steps=args.n_shock, progress=True,
+                            axle=args.axle)
+    stem = _output_stem(args.file, args.axle)
     out_dir = Path(args.out_dir)
 
     # static component-analysis plot (axle plunge, CV, arm articulation angles)
@@ -107,7 +118,7 @@ def _cmd_analyze(args) -> int:
 
 
 def _cmd_forces(args) -> int:
-    result = run_quasistatic(args.csv)
+    result = run_quasistatic(args.file, axle=args.axle)
     print(report(result))
     _write(forces3d.forces_figure(result), Path(args.out_dir), "forces3d.html")
     return 0
@@ -115,7 +126,7 @@ def _cmd_forces(args) -> int:
 
 def _cmd_optimize(args) -> int:
     res = optimize(
-        args.csv,
+        args.file,
         opt_point=args.point,
         sweep_axes=[int(a) for a in args.axes.split(",")],
         sweep_range=[float(r) for r in args.range.split(",")],
@@ -123,10 +134,21 @@ def _cmd_optimize(args) -> int:
         objective=args.objective,
         n_shock_steps=args.n_shock,
         progress=True,
+        axle=args.axle,
     )
     print(optimize_report(res))
     _write(optimization_figure(res), Path(args.out_dir), "optimization.html")
     return 0
+
+
+def _add_axle_opt(p) -> None:
+    p.add_argument(
+        "--axle",
+        choices=("front", "rear"),
+        default=None,
+        help="corner to simulate (front|rear); required for shared "
+             "datanew/*.txt files, ignored for legacy per-corner CSVs",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -134,7 +156,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     a = sub.add_parser("analyze", help="Run kinematic sweep + plots (sussy_steer)")
-    a.add_argument("csv")
+    a.add_argument("file")
+    _add_axle_opt(a)
     a.add_argument("--n-shock", type=int, default=200,
                    help="shock steps (2-D grid resolution; default 200)")
     a.add_argument("--surfaces", action="store_true",
@@ -143,12 +166,14 @@ def main(argv: list[str] | None = None) -> int:
     a.set_defaults(fn=_cmd_analyze)
 
     f = sub.add_parser("forces", help="Run quasistatic force analysis + plot")
-    f.add_argument("csv")
+    f.add_argument("file")
+    _add_axle_opt(f)
     f.add_argument("--out-dir", default="outputs")
     f.set_defaults(fn=_cmd_forces)
 
     o = sub.add_parser("optimize", help="Hardpoint grid-search optimizer")
-    o.add_argument("csv")
+    o.add_argument("file")
+    _add_axle_opt(o)
     o.add_argument("--point", default="OuterTrackRodBallJoint")
     o.add_argument("--axes", default="3", help="comma-separated 1/2/3 (X/Y/Z)")
     o.add_argument("--range", default="1.0", help="comma-separated +/- sweep (in)")

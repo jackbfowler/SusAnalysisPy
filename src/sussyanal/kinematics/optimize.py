@@ -69,12 +69,13 @@ def optimize(
     objective: str = "bump_steer",
     n_shock_steps: int = 30,
     progress: bool = False,
+    axle: str | None = None,
 ) -> OptimizationResult:
     """Grid-search ``opt_point`` over ``sweep_axes`` to minimize ``objective``."""
     if objective not in _OBJECTIVES:
         raise ValueError(f"objective must be one of {_OBJECTIVES}")
 
-    data = parse_csv(csv)
+    data = parse_csv(csv, axle=axle)
     geometry, config = data.geometry, data.config
     field = _resolve_field(opt_point)
     base_pos = np.asarray(getattr(geometry, field), dtype=float).copy()

@@ -38,12 +38,17 @@ class QuasistaticResult:
     forces: Forces
 
 
-def run_quasistatic(csv, inputs: QuasistaticInputs | None = None) -> QuasistaticResult:
-    """Run kinematics -> geometry at target step -> transform loads -> solve."""
+def run_quasistatic(
+    csv, inputs: QuasistaticInputs | None = None, axle: str | None = None
+) -> QuasistaticResult:
+    """Run kinematics -> geometry at target step -> transform loads -> solve.
+
+    ``axle`` selects front/rear for shared files (see ``io.parse_csv``).
+    """
     if inputs is None:
         inputs = QuasistaticInputs()
 
-    data = parse_csv(csv)
+    data = parse_csv(csv, axle=axle)
     config = data.config
     model = SuspensionModel.from_data(data)
 

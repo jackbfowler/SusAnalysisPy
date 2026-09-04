@@ -11,12 +11,15 @@ def analyze(
     n_shock_steps: int = 100,
     n_steer_steps: int | None = None,
     progress: bool = False,
+    axle: str | None = None,
 ) -> KinematicResults:
-    """Parse ``csv``, build the model, and run the shock x steer sweep.
+    """Parse ``csv`` (``axle`` for shared files), build the model, and run the
+    shock x steer sweep.
 
-    The configuration is taken from the hardpoint set's own CSV.
+    The configuration is taken from the file itself. Shared front+rear files
+    require ``axle="front"`` or ``axle="rear"``.
     """
-    data = parse_csv(csv)
+    data = parse_csv(csv, axle=axle)
     config = data.config
     model = SuspensionModel.from_data(data)
     results = solve_sweep(

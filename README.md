@@ -10,7 +10,8 @@ interactive Plotly visualizations.
 | `analyze` | Kinematic sweep (shock × steer): interactive 3-D model with sliders, live-linked envelope plots below, static envelope + component-analysis HTML |
 | `forces` | Quasistatic force analysis at a target steer, 3-D force vector plot |
 | `optimize` | Hardpoint grid-search optimizer (minimize bump steer, plunge, camber gain, …) |
-| `tools/points_to_csv.py` | Convert a LOTUS Shark mm hardpoint export blocks into inch CSV the analyzer can read |
+| `tools/points_to_csv.py` | Import ONE LOTUS mm corner export into the shared `datanew/*.txt` (`--axle front\|rear`, merges) |
+| `tools/csv_to_shared.py` | Migrate a legacy front+rear `data/*.csv` pair into one shared `datanew/*.txt` |
 
 ## Install (once)
 
@@ -26,25 +27,33 @@ python3 -m venv .venv                      # venv is gitignored, lives in the re
 
 ## Run — example calls
 
-```bash
-# Analyze a front suspension (2-D: shock + steering sweep)
-.venv/bin/sussyanal analyze data/2026BajaFront_1-20.csv
+Shared `datanew/*.txt` files hold front + rear for a year/version; pick the
+corner with `--axle`. Legacy per-corner `data/*.csv` files still run but are
+deprecated.
 
-# Analyze a suspension, in this case no steering travel
-.venv/bin/python -m sussyanal analyze data/2027BajaRear.csv
+```bash
+# Analyze the FRONT corner (2-D: shock + steering sweep)
+.venv/bin/sussyanal analyze datanew/2026Baja.txt --axle front
+
+# Analyze the REAR corner of the same file (1-D: no steering travel)
+.venv/bin/sussyanal analyze datanew/2026Baja.txt --axle rear
 
 # Add 3-D surface plots to a 2-D analysis, into a custom output dir
-.venv/bin/sussyanal analyze data/2026BajaFront_1-20.csv --surfaces --out-dir outputs
+.venv/bin/sussyanal analyze datanew/2026Baja.txt --axle front --surfaces --out-dir outputs
 
 # Quasistatic forces
-.venv/bin/sussyanal forces data/2026BajaFront_1-20.csv
+.venv/bin/sussyanal forces datanew/2026Baja.txt --axle front
 
 # Optimizer (sweep ex: outer track-rod ball joint Z, minimize bump steer)
-.venv/bin/sussyanal optimize data/2026BajaFront_1-20.csv \
+.venv/bin/sussyanal optimize datanew/2026Baja.txt --axle front \
     --point OuterTrackRodBallJoint --axes 3 --range 1.0 --steps 50
 
-# Convert mm hardpoints -> analyzer CSV
-.venv/bin/python tools/points_to_csv.py pointsimport.txt data/2027BajaRear.csv
+# Import one LOTUS corner export (mm) into the shared file
+.venv/bin/python tools/points_to_csv.py pointsimport.txt datanew/2027Baja.txt --axle rear
+
+# Migrate an existing legacy front+rear CSV pair into the shared format
+.venv/bin/python tools/csv_to_shared.py data/2026BajaFront_12-16.csv \
+    data/2026BajaRear_3-3.csv -o datanew/2026Baja.txt
 ```
 
 Outputs are self-contained Plotly HTML files in `outputs/` — open in any

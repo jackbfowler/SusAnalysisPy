@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from sussyanal.geometry import SuspensionModel, intersect_circle_sphere, rotate_point, unit
 from sussyanal.io import parse_csv
@@ -11,6 +12,11 @@ from sussyanal.kinematics import solve_sweep
 from sussyanal.forces import run_quasistatic
 
 DATA = Path(__file__).resolve().parent.parent / "data" / "2026BajaFront_1-20.csv"
+
+# Shared-format pair first converted to datanew/ (front 12-16 + rear 3-3).
+SHARED = Path(__file__).resolve().parent.parent / "datanew" / "2026Baja.txt"
+LEGACY_FRONT = Path(__file__).resolve().parent.parent / "data" / "2026BajaFront_12-16.csv"
+LEGACY_REAR = Path(__file__).resolve().parent.parent / "data" / "2026BajaRear_3-3.csv"
 
 
 def test_unit():
@@ -43,6 +49,53 @@ def test_parse_csv():
     assert data.config.wheelbase == 58.0
     assert data.config.missing == ()
     assert data.geometry.has_axle
+
+
+def test_legacy_csv_deprecated():
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        parse_csv(DATA)
+
+
+def test_shared_requires_axle():
+    with pytest.raises(ValueError, match="axle='front' or axle='rear'"):
+        parse_csv(SHARED)
+
+
+def _assert_same_points(a, b, atol: float = 1e-9):
+    for f in a.__dataclass_fields__:
+        va, vb = getattr(a, f), getattr(b, f)
+        if va is None or vb is None:
+            assert (va is None) == (vb is None), f
+        else:
+            assert np.allclose(np.asarray(va, float), np.asarray(vb, float), atol=atol), f
+
+
+def test_shared_front_matches_legacy_front():
+    """New-format front parse must reproduce the old front CSV exactly."""
+    shared = parse_csv(SHARED, axle="front")
+    legacy = parse_csv(LEGACY_FRONT)
+    _assert_same_points(shared.geometry, legacy.geometry)
+    assert shared.config.bump == legacy.config.bump == 5.01
+    assert shared.config.droop == legacy.config.droop == 2.99
+    assert shared.config.wheel_size == legacy.config.wheel_size == 23.0
+    assert shared.config.steer_sweep == legacy.config.steer_sweep == 1.3
+    assert shared.config.shock_mount_lca == legacy.config.shock_mount_lca == 1
+    assert shared.config.missing == legacy.config.missing == ("wheelbase",)
+
+
+def test_shared_rear_matches_legacy_rear():
+    """New-format rear parse must reproduce the old rear CSV geometry; the rear
+    does not steer (legacy rack = 0), and wheelbase is no longer carried."""
+    shared = parse_csv(SHARED, axle="rear")
+    legacy = parse_csv(LEGACY_REAR)
+    _assert_same_points(shared.geometry, legacy.geometry)
+    assert shared.config.bump == 4.71
+    assert shared.config.droop == 4.29
+    assert shared.config.wheel_size == 23.0
+    assert shared.config.shock_mount_lca == 1
+    assert shared.config.steer_sweep == 0.0  # rear axle does not steer
+    assert shared.config.wheelbase == 0.0    # removed from the shared file
+    assert shared.config.missing == ("steer_sweep", "wheelbase")
 
 
 def test_config_is_per_hardpoint_set():
